@@ -166,8 +166,8 @@ int checkDiagonalWin(){
 
 int checkFull(){
     char *board = sD->board;
-    for(int i=0;i<BOARD_SIZE;i++){
-        if(board[i]==' '){
+    for(int i = 0;i < BOARD_SIZE; i++){
+        if(board[i] == ' '){
             return 0;
         }
     }

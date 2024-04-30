@@ -21,8 +21,8 @@ void terminazioneSicura();
 
 int main() {
     
-    
-    shmid = shmget(1234, sizeof(sharedData), 0666|IPC_CREAT);
+    //Recupero lo shareMemoryID usando la systemCall shmget
+    shmid = shmget(1234, sizeof(sharedData), 0666);
     if (shmid < 0) {
         errExit("Errore nella generazione della memoria condivisa");
     }
@@ -37,11 +37,12 @@ int main() {
 
     int x,y;
  
-    printf("Inserisci coordinate posizione: ");
+    printf("Inserisci coordinate posizione (x y): ");
     scanf("%d %d", &x, &y);
+    //Ottengo l'indice 
+    int index = (3 * (y - 1)) + x - 1;
     printf("Hai inserito: %d %d\n", x, y);
     terminazioneSicura();
-
     return 0;
 }
 
