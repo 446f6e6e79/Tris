@@ -25,6 +25,12 @@ void terminazioneSicura();
 void firstSigIntHandler(int sig);
 void secondSigIntHandler(int sig);
 
+int checKVerticalWin();
+int checkHorizontalWin();
+int checkDiagonalWin();
+int checkFull();
+int checkResult();
+
 void firstSigIntHandler(int sig){
     printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
     //Cambio ora il comportamento al segnale sigInt
@@ -82,7 +88,7 @@ int main(int argC, char * argV[]){
     sD -> player2 = argV[3][0];
 
     for(int i = 0; i < BOARD_SIZE; i++){
-        sD -> board[i] = 'x';
+        sD -> board[i] = ' ';
     }
     printBoard();
     do{
@@ -114,3 +120,27 @@ void printBoard(){
         }
     }
 }
+/*Controlla il caso di vittoria verticale*/
+int checkVerticalWin(){
+    char * board = sD -> board;
+    for(int i = 0; i < 3; i++){
+        if(board[i] != ' ' && board[i] == board[i + 3] && board[i] == board[i + 6]){
+            return 1;
+        }
+    }
+    return 0;
+}
+
+/*Controlla il caso di vittoria orizzontale*/
+int checkHorizontalWin(){
+    char * board = sD -> board;
+    for(int i = 0; i < 3; i++){
+        if(board[i * 3] != ' ' && board[i*3] == board[i*3 + 1] && board[i*3] == board[i*3 + 2]){
+            return 1;
+        }
+    }
+    return 0;
+}
+int checkDiagonalWin(){return 0;}
+int checkFull(){return 0;}
+int checkResult(){return 0;}
