@@ -135,11 +135,22 @@ void printBoard(){
     }
 }
 /*Controlla il caso di vittoria verticale*/
+/*Possibili return
+    0 : nessuna vittoria
+    1 : vittoria player1
+    2 : vittoria player2
+*/
 int checkVerticalWin(){
     char * board = sD -> board;
+    char player1 = sD -> player1;
+    char player2 = sD -> player2;
     for(int i = 0; i < 3; i++){
         if(board[i] != ' ' && board[i] == board[i + 3] && board[i] == board[i + 6]){
-            return 1;
+            if(player1 == board[i]){
+                return 1;
+            }else{
+                return 2;
+            }
         }
     }
     return 0;
@@ -148,35 +159,61 @@ int checkVerticalWin(){
 /*Controlla il caso di vittoria orizzontale*/
 int checkHorizontalWin(){
     char * board = sD -> board;
+    char player1 = sD -> player1;
+    char player2 = sD -> player2;
     for(int i = 0; i < 3; i++){
         if(board[i * 3] != ' ' && board[i*3] == board[i*3 + 1] && board[i*3] == board[i*3 + 2]){
-            return 1;
+            if(player1 == board[i*3]){
+                return 1;
+            }else{
+                return 2;
+            }
         }
     }
     return 0;
 }
 int checkDiagonalWin(){
+
     char *board = sD->board;
-    if (board[0] != ' ' && board[0] == board[4] && board[0] == board[8])
-        return 1;
-    if (board[2] != ' ' && board[2] == board[4] && board[2] == board[6])
-        return 1;
+    char player1 = sD -> player1;
+    char player2 = sD -> player2;
+
+    if (board[0] != ' ' && board[0] == board[4] && board[0] == board[8]){
+        if(player1 == board[0]){
+                return 1;
+            }else{
+                return 2;
+            }
+    }
+    if (board[2] != ' ' && board[2] == board[4] && board[2] == board[6]){
+        if(player1 == board[2]){
+                return 1;
+            }else{
+                return 2;
+            }
+    }
     return 0;
 }
 
 int checkFull(){
     char *board = sD->board;
-    for(int i = 0;i < BOARD_SIZE; i++){
-        if(board[i] == ' '){
+    for(int i=0;i<BOARD_SIZE;i++){
+        if(board[i]==' '){
             return 0;
         }
     }
     return 1;
 }
-//Ritorna 1 in caso di gioco terminato
+//Ritorna 0 in caso di gioco non terminato oppure 1/2 a seconda del player che ha vinto
 int checkResult(){
-    if((checkDiagonalWin() || checkHorizontalWin() || checkVerticalWin()) || checkFull()){
-        return 1;
+    if(checkHorizontalWin()!=0){
+        return checkHorizontalWin();
     }
-    return 0;
+    if(checkVerticalWin()!=0){
+        return checkVerticalWin();
+    }
+    if(checkDiagonalWin()!=0){
+        return checkDiagonalWin();
+    }
+    return checkFull;
 }
