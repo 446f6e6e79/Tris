@@ -4,8 +4,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <unistd.h>
+#include <signal.h> 
+#include <sys/types.h> 
 #include "errExit.h"
+
 
 #define BOARD_SIZE 9
 
@@ -71,7 +74,7 @@ int main(int argC, char * argV[]){
 
     
     //Generazione della memoria condivisa
-    shmid = shmget(69, sizeof(sharedData), 0666|IPC_CREAT);
+    shmid = shmget(1234, sizeof(sharedData), 0666|IPC_CREAT);
     if(shmid < 0){
         errExit("Errore nella generazione della memoria condivisa\n");
     }
@@ -86,17 +89,28 @@ int main(int argC, char * argV[]){
     //Inizializzazione della memoria condivisa
     sD -> player1 = argV[2][0];
     sD -> player2 = argV[3][0];
-
+    printf("Player 1: %c\n", sD->player1);
+    printf("Player 2: %c\n", sD->player2);
     for(int i = 0; i < BOARD_SIZE; i++){
         sD -> board[i] = ' ';
     }
+
     printBoard();
-    do{
+
+    for(int i=0; i<2; i++){
+        pid_t pid = fork();
+        if(pid<0){
+            errExit("Errore nella creazione della fork");
+        }
+        if(pid == 0){
+            //Apre un ulteriore terminal con sopra TrisClient
+            execl("/usr/bin/x-terminal-emulator", "x-terminal-emulator", "-e", "./TrisClient", NULL);
+            errExit("Errore nella exec");
+        }
     }
-    while (1);
 
     printf("\n");
-
+    while(1);
     terminazioneSicura();   
 }
 void terminazioneSicura(){
@@ -141,6 +155,28 @@ int checkHorizontalWin(){
     }
     return 0;
 }
-int checkDiagonalWin(){return 0;}
-int checkFull(){return 0;}
-int checkResult(){return 0;}
+int checkDiagonalWin(){
+    char *board = sD->board;
+    if (board[0] != ' ' && board[0] == board[4] && board[0] == board[8])
+        return 1;
+    if (board[2] != ' ' && board[2] == board[4] && board[2] == board[6])
+        return 1;
+    return 0;
+}
+
+int checkFull(){
+    char *board = sD->board;
+    for(int i=0;i<BOARD_SIZE;i++){
+        if(board[i]==' '){
+            return 0;
+        }
+    }
+    return 1;
+}
+//Ritorna 1 in caso di gioco terminato
+int checkResult(){
+    if((checkDiagonalWin() || checkHorizontalWin() || checkVerticalWin()) || checkFull()){
+        return 1;
+    }
+    return 0;
+}

@@ -1,6 +1,6 @@
 NAME_CLIENT=TrisClient
 NAME_SERVER=TrisServer
-CFLAGS=-Wall -std=gnu99
+CFLAGS=-Wall -std=gnu99 -m64
 INCLUDES=-I./inc
 
 SRCS=src/errExit.c src/TrisClient.c src/TrisServer.c
