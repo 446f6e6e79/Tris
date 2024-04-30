@@ -9,6 +9,16 @@
 
 #define BOARD_SIZE 9
 
+/*
+    Definisco il tipo sharedData. 
+*/
+typedef struct{
+    char player1;
+    char player2;
+    char board[BOARD_SIZE];
+}sharedData;
+
+
 //Definizione prototipi
 void printBoard();
 void terminazioneSicura();
@@ -16,23 +26,22 @@ void firstSigIntHandler(int sig);
 void secondSigIntHandler(int sig);
 
 void firstSigIntHandler(int sig){
-    printf("È stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!");
+    printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
     //Cambio ora il comportamento al segnale sigInt
     signal(SIGINT, secondSigIntHandler);
 }
 
 void secondSigIntHandler(int sig){
     terminazioneSicura();
-    printf("Il gioco è stato terminato.\n");
+    printf("\nIl gioco è stato terminato.\n");
     exit(0);
 }
 
-char *board;
+sharedData * sD;
 int shmid;
 
 int main(int argC, char * argV[]){
-    
-    char player1, player2;
+
     int timeOut;
     
     //Controllo sui parametri passati
@@ -50,28 +59,30 @@ int main(int argC, char * argV[]){
     if(strlen(argV[2]) != 1 || strlen(argV[3])!= 1){
         errExit("Simboli devono essere caratteri");
     }
-    player1 = argV[2][0];
-    player2 = argV[3][0];
-
+    
     //Setto il nuvo comportamento dei segnali
     signal(SIGINT, firstSigIntHandler);
 
     
     //Generazione della memoria condivisa
-    shmid = shmget(69, sizeof(char)*BOARD_SIZE, 0666|IPC_CREAT);
+    shmid = shmget(69, sizeof(sharedData), 0666|IPC_CREAT);
     if(shmid < 0){
         errExit("Errore nella generazione della memoria condivisa\n");
     }
     
     //Attacco l'array board alla zona di memoria condivisa
-    board = (char *) shmat(shmid, NULL, 0);
-    if(board == (char *)-1){
+    sD = shmat(shmid, NULL, 0);
+    if(sD == (void *)-1){
         errExit("Errore nell'attach alla memoria condivisa\n");
     }
+    sD = (sharedData *)sD;
     
-    //Inizializzazione array board
+    //Inizializzazione della memoria condivisa
+    sD -> player1 = argV[2][0];
+    sD -> player2 = argV[3][0];
+
     for(int i = 0; i < BOARD_SIZE; i++){
-        board[i] = ' ';
+        sD -> board[i] = 'x';
     }
     printBoard();
     do{
@@ -84,14 +95,22 @@ int main(int argC, char * argV[]){
 }
 void terminazioneSicura(){
     //Chiusura e pulizia della memoria condivisa con annessi attach
-    shmdt((void *) board);
+    shmdt((void *) sD);
     shmctl(shmid, IPC_RMID, NULL);
 }
 void printBoard(){
-    for(int i = 0; i < BOARD_SIZE; i++){
-        if(i && i % 3 == 0){
-            printf("\n-------\n");
+    for (int i = 0; i < BOARD_SIZE; i++){
+        printf(" %c ", sD->board[i]);
+        //Se sono nella cella più  a DX
+        if ( (i + 1) % 3 == 0){
+            printf("\n");
+            //Se non sono nell'ultima riga
+            if (i < BOARD_SIZE - 1){
+                printf("---|---|---\n");
+            }
         }
-        printf("%c|", board[i]);
+        else{
+            printf("|");
+        }
     }
 }
