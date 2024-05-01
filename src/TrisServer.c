@@ -18,6 +18,8 @@
 typedef struct{
     char player1;
     char player2;
+    char * player1Name;
+    char * player2Name;
     char board[BOARD_SIZE];
 }sharedData;
 
@@ -45,6 +47,10 @@ void secondSigIntHandler(int sig){
     printf("\nIl gioco è stato terminato.\n");
     exit(0);
 }
+//Cambio del turno alla ricezione del segnale SIGALRM
+void sigAlarmHandler(int sig){
+    
+}
 
 sharedData * sD;
 int shmid;
@@ -61,10 +67,15 @@ int main(int argC, char * argV[]){
     //Converto il valore di timeout in un intero
     timeOut = atoi(argV[1]);
     if(timeOut < 0){
-        errExit("TimeOut > 0");
+        errExit("TimeOut >= 0");
     }
-    //Verifico la lunghezza dei simboli inseriti
+    //Se timeOut != 0, imposto il sigALRM handler
+    else if(timeOut){
+        if (signal(SIGALRM, sigAlarmHandler) == SIG_ERR)
+            errExit("change signal handler failed");
+    }
 
+    //Verifico la lunghezza dei simboli inseriti
     if(strlen(argV[2]) != 1 || strlen(argV[3])!= 1){
         errExit("Simboli devono essere caratteri");
     }

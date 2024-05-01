@@ -8,18 +8,28 @@
 
 #define BOARD_SIZE 9
 
-typedef struct {
+typedef struct{
     char player1;
     char player2;
+    char * player1Name;
+    char * player2Name;
     char board[BOARD_SIZE];
-} sharedData;
+}sharedData;
 
 int shmid;
 sharedData *sD;
 
 void terminazioneSicura();
 
-int main() {
+int main(int argC, char * argV[]) {
+
+    if(argC != 2){
+        printf("Usage: %s <nomeUtente>", argV[0]);
+        return 1;
+    }
+    if(argV[2][0] == '*'){
+        //Gioca Contro il PC
+    }
     
     //Recupero lo shareMemoryID usando la systemCall shmget
     shmid = shmget(1234, sizeof(sharedData), 0666);
