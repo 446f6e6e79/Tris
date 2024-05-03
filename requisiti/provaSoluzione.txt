@@ -1,0 +1,22 @@
+FUNZIONAMENTO NORMALE DEL GIOCO:
+
+SEMAFORO SPlayer1 = 1, SPlayer2 = 0  -> Ipotizziamo che il primo round sia sempre giocato dal giocatore p1
+
+player 1: P(SPlayer1)   -> entra nella zona critica, esegue la mossa e sblocca il secondo processo V(SPlayer2)
+player 2: P(SPlayer2)   -> Viene bloccato, in attesa di player1
+
+-Player 1 termina:
+SPlayer1 = 0, SPlayer2 = 1
+
+player 1: bloccato, nell'attesa che player2 esegua la sua mossa;
+player2: esegue la mossa, sblocca primo processo V(SPlayer2)
+
+Inizializzazione dei due client:
+//Presumo sia necessario un terzo semaforo di MUTEX
+
+
+FineTimeOUT:
+Al processo server arriva il segnale SIGALRM
+    - il processo server dovrà capire di chi, tra i due processi, fosse turno.
+    - Invia un segnale a tale processo (es: SIGUSR1, deve però essere noto il PID)
+    - il processo effettuerà lo switch del turno

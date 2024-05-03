@@ -26,9 +26,10 @@ typedef struct{
 
 //Definizione prototipi
 void printBoard();
+void switchRound();
 void terminazioneSicura();
-void firstSigIntHandler(int sig);
-void secondSigIntHandler(int sig);
+
+
 
 int checKVerticalWin();
 int checkHorizontalWin();
@@ -47,14 +48,16 @@ void secondSigIntHandler(int sig){
     printf("\nIl gioco è stato terminato.\n");
     exit(0);
 }
+
 //Cambio del turno alla ricezione del segnale SIGALRM
 void sigAlarmHandler(int sig){
-    
+    //Resetto il comportamento di CTRL-C
+    signal(SIGINT, firstSigIntHandler);
 }
 
 sharedData * sD;
 int shmid;
-
+int round = 1;
 int main(int argC, char * argV[]){
 
     int timeOut;
