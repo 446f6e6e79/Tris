@@ -1,5 +1,9 @@
 {
     "files.associations": {
-        "stdio.h": "c"
-    }
+        "stdio.h": "c",
+        "types.h": "c",
+        "semaphore.h": "c",
+        "sem.h": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
 }

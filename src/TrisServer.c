@@ -1,31 +1,29 @@
-#include<stdio.h>
-#include <sys/ipc.h> 
-#include <sys/shm.h> 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+
+#include <sys/ipc.h> 
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <signal.h> 
-#include <sys/types.h> 
+ 
 #include "errExit.h"
+#include "semaphore.h"
+#include "utils.h"
 
-
-#define BOARD_SIZE 9
-
-/*
-    Definisco il tipo sharedData. 
-*/
-typedef struct{
-    char player1;
-    char player2;
-    char * player1Name;
-    char * player2Name;
-    char board[BOARD_SIZE];
-}sharedData;
-
+/* Definizioni variabili globali */
+sharedData * sD;
+int shmid;
+int semID;
+int turn = 1;
 
 //Definizione prototipi
-void printBoard();
+void firstSigIntHandler(int sig);
+void secondSigIntHandler(int sig);
+void sigAlarmHandler(int sig);
+
 void switchRound();
 void terminazioneSicura();
 
@@ -44,8 +42,8 @@ void firstSigIntHandler(int sig){
 }
 
 void secondSigIntHandler(int sig){
-    terminazioneSicura();
     printf("\nIl gioco è stato terminato.\n");
+    terminazioneSicura();
     exit(0);
 }
 
@@ -53,12 +51,20 @@ void secondSigIntHandler(int sig){
 void sigAlarmHandler(int sig){
     //Resetto il comportamento di CTRL-C
     signal(SIGINT, firstSigIntHandler);
+
+    sD -> stato = 3;
+    if (kill(sD->pids[sD->activePlayerIndex], SIGUSR1) == -1) {
+        perror("Errore nella fine TimeOut");
+        exit(EXIT_FAILURE);
+    }
 }
 
-sharedData * sD;
-int shmid;
-int round = 1;
+/*
+    INIZIO MAIN
+*/
 int main(int argC, char * argV[]){
+    //Setto il nuvo comportamento dei segnali
+    signal(SIGINT, firstSigIntHandler);
 
     int timeOut;
     
@@ -83,12 +89,8 @@ int main(int argC, char * argV[]){
         errExit("Simboli devono essere caratteri");
     }
     
-    //Setto il nuvo comportamento dei segnali
-    signal(SIGINT, firstSigIntHandler);
-
-    
     //Generazione della memoria condivisa
-    shmid = shmget(1234, sizeof(sharedData), 0666|IPC_CREAT);
+    shmid = shmget(69, sizeof(sharedData), 0666 | IPC_CREAT | IPC_EXCL);
     if(shmid < 0){
         errExit("Errore nella generazione della memoria condivisa\n");
     }
@@ -101,53 +103,81 @@ int main(int argC, char * argV[]){
     sD = (sharedData *)sD;
     
     //Inizializzazione della memoria condivisa
-    sD -> player1 = argV[2][0];
-    sD -> player2 = argV[3][0];
-    printf("Player 1: %c\n", sD->player1);
-    printf("Player 2: %c\n", sD->player2);
+    sD -> player[0] = argV[2][0];
+    sD -> player[1] = argV[3][0];
+    sD -> activePlayer = 0;
+    sD -> pids[0] = getpid();
+    printf("Player 1: %c\n", sD->player[0]);
+    printf("Player 2: %c\n", sD->player[1]);
     for(int i = 0; i < BOARD_SIZE; i++){
         sD -> board[i] = ' ';
     }
 
-    printBoard();
-
-    for(int i=0; i<2; i++){
-        pid_t pid = fork();
-        if(pid<0){
-            errExit("Errore nella creazione della fork");
-        }
-        if(pid == 0){
-            //Apre un ulteriore terminal con sopra TrisClient
-            execl("/usr/bin/x-terminal-emulator", "x-terminal-emulator", "-e", "./TrisClient", NULL);
-            errExit("Errore nella exec");
-        }
+    //Iniziallizzazione dei semafori
+    semID =  semget(70, NUM_SEM, IPC_CREAT | IPC_EXCL | 0666 );
+    if(semID == -1){
+        errExit("Errore nella get del semaforo\n");
     }
 
-    printf("\n");
-    while(1);
+    unsigned short values[4] = {1, 0, 0, 0};
+    union semun arg;
+    arg.array = values;
+
+    if (semctl(semID, 0, SETALL, arg) == -1){
+        terminazioneSicura();
+        printf("semctl GETALL failed");
+        return 1;
+    }
+    
+    /*
+        Devo attendere che entrambi i processi siano collegati
+    */
+    s_wait(semID, 3);
+
+    //Libero il semaforo del primoPlayer
+    s_signal(semID, 1);
+
+    /*
+        INIZIO GIOCO
+    */
+    do{
+        //Resetta l'alarm precedente, se presente
+        alarm(0);
+
+        //Inizializzo un nuovo timer
+        alarm(timeOut);
+        
+        //Attende fino a che activePlayer non ha eseguito la sua mossa
+
+
+        int win = checkResult();
+        //Se c'è un vincitore
+        if(checkResult()){
+            //Setto stato a vittoria
+            sD -> stato = win;
+        }
+        else if(checkFull()){
+            //Setto stato a pareggio
+            sD -> stato = 0;
+        }
+        /*if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
+            perror("Errore nell'invio del segnale al client");
+        }
+        */
+
+    }while(1);
     terminazioneSicura();   
 }
+
+
 void terminazioneSicura(){
     //Chiusura e pulizia della memoria condivisa con annessi attach
+    printf("TERMINAZIONE SICURA AVVIATA\n");
     shmdt((void *) sD);
     shmctl(shmid, IPC_RMID, NULL);
+    semctl(semID, 0, IPC_RMID, NULL);
 }
-void printBoard(){
-    for (int i = 0; i < BOARD_SIZE; i++){
-        printf(" %c ", sD->board[i]);
-        //Se sono nella cella più  a DX
-        if ( (i + 1) % 3 == 0){
-            printf("\n");
-            //Se non sono nell'ultima riga
-            if (i < BOARD_SIZE - 1){
-                printf("---|---|---\n");
-            }
-        }
-        else{
-            printf("|");
-        }
-    }
-}
+
 /*Controlla il caso di vittoria verticale*/
 /*Possibili return
     0 : nessuna vittoria
@@ -156,8 +186,7 @@ void printBoard(){
 */
 int checkVerticalWin(){
     char * board = sD -> board;
-    char player1 = sD -> player1;
-    char player2 = sD -> player2;
+    char player1 = sD -> player[0];
     for(int i = 0; i < 3; i++){
         if(board[i] != ' ' && board[i] == board[i + 3] && board[i] == board[i + 6]){
             if(player1 == board[i]){
@@ -173,8 +202,8 @@ int checkVerticalWin(){
 /*Controlla il caso di vittoria orizzontale*/
 int checkHorizontalWin(){
     char * board = sD -> board;
-    char player1 = sD -> player1;
-    char player2 = sD -> player2;
+    char player1 = sD -> player[0];
+    
     for(int i = 0; i < 3; i++){
         if(board[i * 3] != ' ' && board[i*3] == board[i*3 + 1] && board[i*3] == board[i*3 + 2]){
             if(player1 == board[i*3]){
@@ -189,8 +218,7 @@ int checkHorizontalWin(){
 int checkDiagonalWin(){
 
     char *board = sD->board;
-    char player1 = sD -> player1;
-    char player2 = sD -> player2;
+    char player1 = sD -> player[0];
 
     if (board[0] != ' ' && board[0] == board[4] && board[0] == board[8]){
         if(player1 == board[0]){
@@ -229,5 +257,5 @@ int checkResult(){
     if(checkDiagonalWin()!=0){
         return checkDiagonalWin();
     }
-    return checkFull;
+    return checkFull();
 }

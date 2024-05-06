@@ -2,62 +2,169 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/ipc.h>
+#include <sys/sem.h>
 #include <sys/shm.h>
+#include <signal.h> 
+#include <string.h>
 #include "errExit.h"
-#include <semaphore.h>
+#include "semaphore.h"
+#include "utils.h"
 
 #define BOARD_SIZE 9
 
-typedef struct{
-    char player1;
-    char player2;
-    char * player1Name;
-    char * player2Name;
-    char board[BOARD_SIZE];
-}sharedData;
-
+//Definizione variabili globali
 int shmid;
 sharedData *sD;
+int  playerIndex;
+int semID;
+
+//Definizione prototipi
+void firstSigIntHandler(int sig);
+void secondSigIntHandler(int sig);
+void sigAlarmHandler(int sig);
 
 void terminazioneSicura();
+void printBoard();
+int getPlayIndex();
+
+void sigUser1Handler(int sig){
+    //Resetto il comportamento di CTRL-C
+    signal(SIGINT, firstSigIntHandler);
+
+    switch(sD->stato){
+        case 3:
+            //Fine TIME-OUT
+            s_signal(semID, (playerIndex%2)+1);
+            break;
+    }
+}
+
+void firstSigIntHandler(int sig){
+    printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
+    //Cambio ora il comportamento al segnale sigInt
+    signal(SIGINT, secondSigIntHandler);
+}
+
+void secondSigIntHandler(int sig){
+    terminazioneSicura();
+    printf("\nIl gioco è stato terminato.\n");
+}
 
 int main(int argC, char * argV[]) {
 
-    if(argC != 2){
+    if(argC < 2 || argC > 3){
         printf("Usage: %s <nomeUtente>", argV[0]);
         return 1;
     }
-    if(argV[2][0] == '*'){
+    if(argC == 3 && argV[2][0] == '*'){
         //Gioca Contro il PC
     }
     
+    //Inizialzzazione dei semadori
+    semID =  semget(70, NUM_SEM , IPC_CREAT | 0666);
+    if(semID == -1){
+        errExit("Errore nella get del semaforo\n");
+    }
+    
     //Recupero lo shareMemoryID usando la systemCall shmget
-    shmid = shmget(1234, sizeof(sharedData), 0666);
+    shmid = shmget(69, sizeof(sharedData), 0666);
     if (shmid < 0) {
-        errExit("Errore nella generazione della memoria condivisa");
+        errExit("Errore nella generazione della memoria condivisa\n");
     }
 
     sD = (sharedData *)shmat(shmid, NULL, 0);
     if (sD == (void *)-1) {
-        errExit("Errore nell'attach alla memoria condivisa");
+        errExit("Errore nell'attach alla memoria condivisa\n");
     }
 
-    printf("Player 1: %c\n", sD->player1);
-    printf("Player 2: %c\n", sD->player2);
+    /*
+        player1 -> playerIndex = 1
+        player2 -> playerIndex = 2
+    */
+    //P(s) sul primo semaforo, necessario per il set delle variabili (SEZIONE CRITICA)
+    s_wait(semID, 0);
+        sD->activePlayer++;
+        playerIndex = sD->activePlayer;
+        strcpy(sD->playerName[playerIndex - 1], argV[1]);
+        sD->pids[playerIndex] = getpid();
 
-    int x,y;
+        if(playerIndex == 2){
+            semOp(semID, 3, +3);
+        }
+        else{
+            printf("In attesa dell'altro giocatore!\n");
+        }
+
+    //Libero il semaforo di mutua esclusione al secondo processo
+    s_signal(semID, 0);
+
+    //Rimango in attesa, fino a che entrambi i giocatori sono attivi
+    s_wait(semID, 3);
+
+    /*
+        La memoria condivisa è stata correttamente settata, può ora iniziare il gioco
+    */
+    
+    do{
+        //Attende il proprio turno
+        printBoard();
+        s_wait(semID, playerIndex);
+        printBoard();
+        sD->activePlayerIndex = playerIndex;
+        int index = getPlayIndex();
+        sD->board[index] = sD->player[playerIndex - 1];
+        //Libera il processo successivo
+        s_signal(semID, (playerIndex%2)+1);
+    }while(1);
+    
  
-    printf("Inserisci coordinate posizione (x y): ");
-    scanf("%d %d", &x, &y);
-    //Ottengo l'indice 
-    int index = (3 * (y - 1)) + x - 1;
-    printf("Hai inserito: %d %d\n", x, y);
+    
     terminazioneSicura();
     return 0;
 }
 
 void terminazioneSicura(){
-    //Chiusura e pulizia della memoria condivisa con annessi attach
+    //Chiusura memoria condivisa con attach
     shmdt((void *) sD);
-    shmctl(shmid, IPC_RMID, NULL);
 }
+
+int getPlayIndex(){
+    int x,y, index, isValid = 0;
+    do{
+        printf("Inserisci coordinate posizione (x y)\n");
+        scanf("%d %d", &x, &y);
+        index = (3 * (y - 1)) + x - 1;
+
+        if((x > 1 && x < 3) && 
+            (y > 1 || y < 3) &&
+            sD->board[index] == ' '){
+            isValid = 1;
+        }
+        else{
+            printf("Input non valido!\n");
+        }
+    }
+    while(!isValid);
+    
+    //Restituisce l'indice 
+    return index;
+}
+
+void printBoard(){
+    system("clear");
+    for (int i = 0; i < BOARD_SIZE; i++){
+        printf(" %c ", sD->board[i]);
+        //Se sono nella cella più  a DX
+        if ( (i + 1) % 3 == 0){
+            printf("\n");
+            //Se non sono nell'ultima riga
+            if (i < BOARD_SIZE - 1){
+                printf("---|---|---\n");
+            }
+        }
+        else{
+            printf("|");
+        }
+    }
+}
+
