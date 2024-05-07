@@ -17,7 +17,6 @@
 sharedData * sD;
 int shmid;
 int semID;
-int turn = 1;
 int activePlayerIndex = 1;
 
 //Definizione prototipi
@@ -27,13 +26,13 @@ void sigAlarmHandler(int);
 
 void terminazioneSicura();
 
-int getOtherPlayerIndex(int);
 int checKVerticalWin();
 int checkHorizontalWin();
 int checkDiagonalWin();
 int checkFull();
 int checkResult();
 
+//Handler per il primo SIGINT dovuto a "CRTL-C"
 void firstSigIntHandler(int sig){
     printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
     //Cambio ora il comportamento al segnale sigInt
@@ -43,8 +42,10 @@ void firstSigIntHandler(int sig){
     }
 }
 
+//Handler per il secondo SIGINT dovuto a "CRTL-C"
 void secondSigIntHandler(int sig){
     printf("\nIl gioco è stato terminato.\n");
+    //Avviso il Client della chiusura del server
     if (kill(sD->pids[1], SIGUSR2) == -1 || kill(sD->pids[2], SIGUSR2) == -1) {
         printf("Errore nell'invio del segnale al client");
         terminazioneSicura();
@@ -55,7 +56,7 @@ void secondSigIntHandler(int sig){
 
 //Cambio del turno alla ricezione del segnale SIGALRM
 void sigAlarmHandler(int sig){
-    //Resetto il comportamento di CTRL-C
+    //Resetto il comportamento di CTRL-C ad ogni turno
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGALR Handler");
     }
@@ -64,18 +65,17 @@ void sigAlarmHandler(int sig){
         errExit("Errore nella fine TimeOut");
     }
 }
-/* Uno dei due processi si è disconnesso*/
+/* Handler che gestisce il caso: uno dei due processi si è disconnesso*/
 void sigUsr1Handler(int sig){
-    //Resetto il comportamento di CTRL-C
-
     sD->stato = 4;
-    if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1) {
+    if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1){
         errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4");
     }
-    printf("Segnale inviato a processo con pid: %d\n", sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)]);
     terminazioneSicura();
     exit(0);
 }
+
+
 /*  
     INIZIO MAIN
 */
@@ -88,9 +88,6 @@ int main(int argC, char * argV[]){
     if (signal(SIGUSR1, sigUsr1Handler) == SIG_ERR) {
         errExit("Errore nel USR1 Handler");
     }
-
-
-    int timeOut;
     
     //Controllo sui parametri passati
     if(argC != 4){
@@ -98,6 +95,7 @@ int main(int argC, char * argV[]){
         return 1;
     }
     
+    int timeOut;
     //Converto il valore di timeout in un intero
     timeOut = atoi(argV[1]);
     if(timeOut < 0){
@@ -115,7 +113,7 @@ int main(int argC, char * argV[]){
     }
     
     //Generazione della memoria condivisa
-    shmid = shmget(69, sizeof(sharedData), 0666 | IPC_CREAT | IPC_EXCL);
+    shmid = shmget(MEMORY_KEY, sizeof(sharedData), 0666 | IPC_CREAT);
     if(shmid < 0){
         errExit("Errore nella generazione della memoria condivisa\n");
     }
@@ -123,6 +121,7 @@ int main(int argC, char * argV[]){
     //Attacco l'array board alla zona di memoria condivisa
     sD = shmat(shmid, NULL, 0);
     if(sD == (void *)-1){
+        shmctl(shmid, IPC_RMID, NULL); //Pulisco memoria
         errExit("Errore nell'attach alla memoria condivisa\n");
     }
     sD = (sharedData *)sD;
@@ -132,15 +131,14 @@ int main(int argC, char * argV[]){
     sD -> player[1] = argV[3][0];
     sD -> activePlayer = 0;
     sD -> pids[0] = getpid();
-    printf("Player 1: %c\n", sD->player[0]);
-    printf("Player 2: %c\n", sD->player[1]);
     for(int i = 0; i < BOARD_SIZE; i++){
         sD -> board[i] = ' ';
     }
-
     //Iniziallizzazione dei semafori
-    semID =  semget(70, NUM_SEM, IPC_CREAT | IPC_EXCL | 0666 );
+    semID =  semget(SEM_KEY, NUM_SEM, IPC_CREAT | 0666 );
     if(semID == -1){
+        shmdt((void *) sD);//Pulisco memoria
+        shmctl(shmid, IPC_RMID, NULL);
         errExit("Errore nella get del semaforo\n");
     }
 
@@ -154,73 +152,65 @@ int main(int argC, char * argV[]){
         printf("semctl GETALL failed");
         return 1;
     }
-    
+    //Inizializzazione terminata
+    printf("\nServer avviato correttamente\n");
+
     /*
         Devo attendere che entrambi i processi siano collegati
     */
-    s_wait(semID, 3);
+    s_wait(semID, SEM_SERVER);
 
     //Libero il semaforo del primoPlayer
     s_signal(semID, 1);
 
-    /**************************************************+
+    /**************************************************
                     INIZIO GIOCO
-    **************************************************+*/
-
-   //Resetta l'alarm se presente
-    alarm(0);
+    ***************************************************/
 
     //Inizializzo un nuovo timer
     alarm(timeOut);
-
+    int win;
     do{
         //Attende fino a che activePlayer non ha eseguito la sua mossa
-        s_wait(semID, 3);
+        s_wait(semID, SEM_SERVER);
 
         //Resetta l'alarm precedente, se presente
         alarm(0);
 
-        int win = checkResult();
+        win = checkResult();
         //Se c'è un vincitore
-        if(win){
+        if(win >= 0){
             //Setto stato a vittoria
             sD -> stato = win;
+            //Avviso i client
             if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
                 terminazioneSicura();
                 errExit("Errore nell'invio del segnale al client");
             }
         }
-        else if(checkFull()){
-            //Setto stato a pareggio
-            sD -> stato = 0;
-            if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
-                terminazioneSicura();
-                errExit("Errore nell'invio del segnale al client");
-            }
-        }   
-
+       
         //Aggiorna activePlayerIndex
         activePlayerIndex = getOtherPlayerIndex(activePlayerIndex);
-
+        //Riavvio il timer per la mossa successiva
         alarm(timeOut);
-        //Sblocca il giocaore Successivo
+        //Sblocca il giocatore Successivo
         s_signal(semID, activePlayerIndex);
     }while(1);
 
     terminazioneSicura();   
+    exit(1);
 }
 
 
 void terminazioneSicura(){
     //Chiusura e pulizia della memoria condivisa con annessi attach
-    printf("TERMINAZIONE SICURA AVVIATA\n");
+    printf("TERMINAZIONE ESEGUITA CORRETTAMENTE\n");
     shmdt((void *) sD);
     shmctl(shmid, IPC_RMID, NULL);
     semctl(semID, 0, IPC_RMID, NULL);
 }
 
-/*Controlla il caso di vittoria verticale*/
-/*Possibili return
+/*  Controlla le varie situazioni di vittoria. Possibili return:
     0 : nessuna vittoria
     1 : vittoria player1
     2 : vittoria player2
@@ -240,7 +230,6 @@ int checkVerticalWin(){
     return 0;
 }
 
-/*Controlla il caso di vittoria orizzontale*/
 int checkHorizontalWin(){
     char * board = sD -> board;
     char player1 = sD -> player[0];
@@ -256,8 +245,8 @@ int checkHorizontalWin(){
     }
     return 0;
 }
-int checkDiagonalWin(){
 
+int checkDiagonalWin(){
     char *board = sD->board;
     char player1 = sD -> player[0];
 
@@ -282,12 +271,19 @@ int checkFull(){
     char *board = sD->board;
     for(int i=0;i<BOARD_SIZE;i++){
         if(board[i]==' '){
-            return 0;
+            return -1;
         }
     }
-    return 1;
+    return 0;
 }
-//Ritorna 0 in caso di gioco non terminato oppure 1/2 a seconda del player che ha vinto
+/*  
+    Funzione che verifica lo stato di gioco. Ritorna:
+
+    - (-1) in caso di gioco non terminato,
+    - (0) in caso di pareggio,
+    - (1) vittoria giocatore1,
+    - (2) vittoria giocatore2
+*/
 int checkResult(){
     if(checkHorizontalWin()!=0){
         return checkHorizontalWin();
@@ -299,8 +295,4 @@ int checkResult(){
         return checkDiagonalWin();
     }
     return checkFull();
-}
-
-int getOtherPlayerIndex(int index){
-    return (index % 2) + 1;
 }

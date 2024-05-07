@@ -10,16 +10,14 @@
 #include "semaphore.h"
 #include "utils.h"
 
-#define BOARD_SIZE 9
-#define SEM_SERVER 3
+
 #define PID_SERVER 0
-#define BUFF_SIZE 64
 
 //Definizione variabili globali
 int shmid;
 sharedData *sD;
 int  playerIndex;
-int otherPlayerIndex;
+
 int semID;
 
 //Definizione prototipi
@@ -29,26 +27,29 @@ void sigAlarmHandler(int sig);
 void sigUser1Handler(int sig);
 void sigUser2Handler(int sig);
 
-void blockINT();
-void unblockINT();
 void terminazioneSicura();
 void printBoard();
 int getPlayIndex();
 
-void cleanInputBuffer();
-
+/*
+    Definisco l'HANDLER per il segnale SIGUSR1. A seconda del valore della variabile stato, assume comportamenti diversi:à
+        - stato = 0 -> Partita terminata in pareggio
+        - stato = 1 or stato = 2 -> Uno dei due processi ha vinto
+        - stato = 3 -> timer scaduto
+        - stato = 4 -> l'altro giocatore si è disconnesso dalla partita
+*/
 void sigUser1Handler(int sig){
     //Resetto il comportamento di CTRL-C
-    printf("Ricebuto segnale 1\n");
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGINT Handler");
     }
 
     switch(sD->stato){
-        case 0:
+        case 0://La partita termina in pareggio
             printf("\nLa partita è terminata in pareggio!\n");
+            terminazioneSicura();
             break;
-        case 1:
+        case 1://Nella partita avviene una vittoria
         case 2:
             if(sD->stato == playerIndex){
                 printBoard();
@@ -67,27 +68,35 @@ void sigUser1Handler(int sig){
             printf("Time-out scaduto!\n");
             printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
 
-            
-            blockINT();
             //Mi metto in attesa che, l'altro giocatore esegua la mossa
             s_wait(semID, playerIndex);
+         
 
-            unblockINT();
             printBoard();
             printf("Inserisci coordinate posizione (x y)\n");
             break;
         
         case 4: //Uno dei due giocatori si è disconnesso
+            system("clear");
             printf("%s si è disconnesso\nHai vinto a tavolino!\n",sD->playerName[otherPlayerIndex - 1]);
+            terminazioneSicura();
             break;
     }
 }
 
+/*
+    Handler per il segnale SIGUSR2:
+        nel processo giocatore, la ricezione di tale segnale rappresenta la chiusura del server
+*/
 void sigUser2Handler(int sig){
     system("clear");
     errExit("Il processo Server è stato terminato\n");
 }
 
+/*
+    Handler per il segnale SIGINT:
+        una volta premuto CTRL-C per la prima volta imposto il comportamento per la seconda pressione dello stesso tasto
+*/
 void firstSigIntHandler(int sig){
     printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
     //Cambio ora il comportamento al segnale sigInt
@@ -96,9 +105,13 @@ void firstSigIntHandler(int sig){
         errExit("Error registering SIGINT handler");
     }
 }
-
+/*
+    Handler per il secondo segnale SIGINT:
+        - Avviso il processo server dell'abbandono della partita
+        - Abbandono la partita, terminando in modo sicuro il processo.
+*/
 void secondSigIntHandler(int sig){
-    //Avviso il server della mia disconnessione
+    //Avviso il SERVER della mia disconnessione
     sD->indexPlayerLefted = playerIndex;
     if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
         errExit("Errore nella comunicazione terminazione\n");
@@ -111,7 +124,9 @@ void secondSigIntHandler(int sig){
     INIZIO MAIN
 ************************/
 int main(int argC, char * argV[]) {
-    printf("%d\n", getpid());
+
+    int otherPlayerIndex;
+    
     //Setto il nuvo comportamento dei segnali
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR ) {
         errExit("Errore nel SIGINT Handler");
@@ -123,77 +138,85 @@ int main(int argC, char * argV[]) {
         errExit("Errore nel SIGUSR2 Handler");
     }
     
+    //In caso di errore nel passaggio dei parametri, segnalo all'utente il corretto funzionamento
     if(argC < 2 || argC > 3){
         printf("Usage: %s <nomeUtente>", argV[0]);
         return 1;
     }
+    
+    //Selezionato di giocare contro il BOT
     if(argC == 3 && argV[2][0] == '*'){
-        //Gioca Contro il PC
+        //Creo un processo figlio, eseguirà TrisBot
+        pid_t pid = fork();
+        if(pid == 0){
+            execl("./bin/TrisBot", "TrisBot", NULL);
+            errExit("Errore nella exec\n");
+        }else if(pid < 0){
+            errExit("Errore nella creazione del BOT\n");
+        }
     }
     
-    //Inizialzzazione dei semadori
-    semID =  semget(70, NUM_SEM , IPC_CREAT | 0666);
-    if(semID == -1){
-        errExit("Errore nella get del semaforo\n");
-    }
+    //Recupero l'id dei semafori
+    semID = getSemaforeID();
     
-    //Recupero lo shareMemoryID usando la systemCall shmget
-    shmid = shmget(69, sizeof(sharedData), 0666);
-    if (shmid < 0) {
-        errExit("Errore nella generazione della memoria condivisa\n");
-    }
+    //Recupero lo shareMemoryID
+    shmid = sharedMemoryAttach();
 
-    sD = (sharedData *)shmat(shmid, NULL, 0);
-    if (sD == (void *)-1) {
-        errExit("Errore nell'attach alla memoria condivisa\n");
-    }
+    //Ottengo il puntatore all'area di memoria condivisa
+    sD = getSharedMemoryPointer();
 
-    /*
-        player1 -> playerIndex = 1
-        player2 -> playerIndex = 2
-    */
-    //P(s) sul primo semaforo, necessario per il set delle variabili (SEZIONE CRITICA)
-    s_wait(semID, 0);
-        sD->activePlayer++;
-        playerIndex = sD->activePlayer;
-        strcpy(sD->playerName[playerIndex - 1], argV[1]);
-        sD->pids[playerIndex] = getpid();
 
-        if(playerIndex == 2){
+    /***********************************
+     *  Inizializzazione memoria CONDIVISA
+     *      essendo una sezione critica, l'accesso deve essere protetto
+     *      da un semaforo MUTEX. 
+     *      Un solo processo alla volta può modificare la memoria condivisa.
+    ************************************/
+    s_wait(semID, SEM_MUTEX);
+        sD->activePlayer++;                                     //Incremento il numero di giocatoriAttivi
+        playerIndex = sD->activePlayer;                         //Salvo, nella variabile playerIndex l'indice del giocatore
+        strcpy(sD->playerName[playerIndex - 1], argV[1]);       //Copio nella memoria condivisa il nome del giocatore, passato come parameteo
+        sD->pids[playerIndex] = getpid();                       //Inserisco nell'array pids il pid del giocatore
+        
+        //Se sono il secondo giocatore, sblocco tutti i processi in attesa
+        if(playerIndex == 2){                                    
             semOp(semID, SEM_SERVER, +3);
         }
+        //Altrimenti sto in attesa dell'arrivo del secondo player
         else{
             printf("In attesa dell'altro giocatore!\n");
         }
 
-    //Libero il semaforo di mutua esclusione al secondo processo
-    s_signal(semID, 0);
+    //FINE SEZIONE CRITICA. Sblocco il semaforo MUTEX
+    s_signal(semID, SEM_MUTEX);
 
     //Rimango in attesa, fino a che entrambi i giocatori sono attivi
     s_wait(semID, SEM_SERVER);
 
-    /*
-        La memoria condivisa è stata correttamente settata, può ora iniziare il gioco
-    */
+    /***********************************
+     *      INIZIO DEL GIOCO
+    ************************************/
+    otherPlayerIndex = getOtherPlayerIndex(playerIndex);
     
-    otherPlayerIndex = (playerIndex%2)+1;
     do{    
         printBoard();
         printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
-        //Attende il proprio turno
-        blockINT();
+        
+        /*
+            Giocatore rimane in attesa sul proprio semaforo.
+            Dovrà attendere che l'altro giocatore esegua la mossa, per essere sbloccato
+        */
         s_wait(semID, playerIndex);
-        unblockINT();
+
         printBoard();
+        
+        //Lettura da input delle coordinate
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
 
         //Avvisa il processo Server, che una mossa è stata eseguita
         s_signal(semID, SEM_SERVER);
     }while(1);
-    
-    terminazioneSicura();
-    return 0;
 }
 
 void terminazioneSicura(){
@@ -202,6 +225,7 @@ void terminazioneSicura(){
     exit(1);
 }
 
+//Acquisisce in input i dati della mossa, attuandone un controllo su di esse
 int getPlayIndex(){
     int x,y, index;
     do{
@@ -235,21 +259,4 @@ void printBoard(){
             printf("|");
         }
     }
-   
 }
-
-void blockINT() {
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGINT);
-    sigprocmask(SIG_BLOCK, &mask, NULL);
-}
-
-// Funzione per sbloccare il segnale SIGINT (CTRL+C)
-void unblockINT() {
-    sigset_t mask;
-    sigemptyset(&mask);
-    sigaddset(&mask, SIGINT);
-    sigprocmask(SIG_UNBLOCK, &mask, NULL);
-}
-
