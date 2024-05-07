@@ -12,6 +12,7 @@
 
 #define BOARD_SIZE 9
 #define SEM_SERVER 3
+#define PID_SERVER 0
 #define BUFF_SIZE 64
 
 //Definizione variabili globali
@@ -38,6 +39,7 @@ void cleanInputBuffer();
 
 void sigUser1Handler(int sig){
     //Resetto il comportamento di CTRL-C
+    printf("Ricebuto segnale 1\n");
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGINT Handler");
     }
@@ -74,12 +76,16 @@ void sigUser1Handler(int sig){
             printBoard();
             printf("Inserisci coordinate posizione (x y)\n");
             break;
+        
+        case 4: //Uno dei due giocatori si è disconnesso
+            printf("%s si è disconnesso\nHai vinto a tavolino!\n",sD->playerName[otherPlayerIndex - 1]);
+            break;
     }
 }
 
-void sigUser1Handler(int sig){
+void sigUser2Handler(int sig){
     system("clear");
-    errExit("Il processo Server è stato terminato");
+    errExit("Il processo Server è stato terminato\n");
 }
 
 void firstSigIntHandler(int sig){
@@ -92,19 +98,29 @@ void firstSigIntHandler(int sig){
 }
 
 void secondSigIntHandler(int sig){
+    //Avviso il server della mia disconnessione
+    sD->indexPlayerLefted = playerIndex;
+    if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
+        errExit("Errore nella comunicazione terminazione\n");
+    }
+    printf("\nHai abbandonato la partita.\n");
     terminazioneSicura();
-
-    printf("\nIl gioco è stato terminato.\n");
-    exit(1);
 }
 
+/***********************
+    INIZIO MAIN
+************************/
 int main(int argC, char * argV[]) {
+    printf("%d\n", getpid());
     //Setto il nuvo comportamento dei segnali
-    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR ) {
         errExit("Errore nel SIGINT Handler");
     }
     if (signal(SIGUSR1, sigUser1Handler) == SIG_ERR) {
         errExit("Errore nel SIGUSR1 Handler");
+    }
+    if (signal(SIGUSR2, sigUser2Handler) == SIG_ERR) {
+        errExit("Errore nel SIGUSR2 Handler");
     }
     
     if(argC < 2 || argC > 3){

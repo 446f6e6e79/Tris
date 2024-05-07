@@ -11,10 +11,10 @@ typedef struct SharedData{
     char player[2];
     char playerName[2][STR_LEN];
     int activePlayer;
-    int activePlayerIndex;
     char board[BOARD_SIZE];
     pid_t pids[NUM_PROCESSES];
     int stato;
+    int indexPlayerLefted;
 }sharedData;
 
 union semun {
