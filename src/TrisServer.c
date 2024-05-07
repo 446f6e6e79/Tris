@@ -18,6 +18,7 @@ sharedData * sD;
 int shmid;
 int semID;
 int turn = 1;
+int activePlayerIndex = 1;
 
 //Definizione prototipi
 void firstSigIntHandler(int sig);
@@ -55,12 +56,13 @@ void sigAlarmHandler(int sig){
         errExit("Errore nel SIGALR Handler");
     }
     sD -> stato = 3;
-    if (kill(sD->pids[sD->activePlayerIndex], SIGUSR1) == -1) {
+    printf("active player alarm: %d\n", activePlayerIndex);
+    if (kill(sD->pids[activePlayerIndex], SIGUSR1) == -1) {
         errExit("Errore nella fine TimeOut");
     }
 }
 
-/*
+/*  
     INIZIO MAIN
 */
 int main(int argC, char * argV[]){
@@ -176,8 +178,15 @@ int main(int argC, char * argV[]){
                 errExit("Errore nell'invio del segnale al client");
             }
         }   
-        int nextPlayer = (sD -> activePlayerIndex)%2 + 1;
-        s_signal(semID, nextPlayer);
+        printf("active player: %d", sD->activePlayerIndex);
+
+        //Aggiorna activePlayerIndex
+        activePlayerIndex = (activePlayerIndex%2) + 1;
+
+        printf("next player: %d\n", activePlayerIndex);
+
+        //Sblocca il giocaore Successivo
+        s_signal(semID, activePlayerIndex);
     }while(1);
 
     terminazioneSicura();   

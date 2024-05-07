@@ -65,8 +65,6 @@ void sigUser1Handler(int sig){
             //Mi metto in attesa che, l'altro giocatore esegua la mossa
             s_wait(semID, playerIndex);
             
-            //Aggiorna la variabile condivisa activePlayerIndex
-            sD->activePlayerIndex = playerIndex;
             printBoard();
             break;
     }
@@ -155,8 +153,6 @@ int main(int argC, char * argV[]) {
         printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
         //Attende il proprio turno
         s_wait(semID, playerIndex);
-        //Aggiorna la variabile condivisa activePlayerIndex
-        sD->activePlayerIndex = playerIndex;
         printBoard();
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
