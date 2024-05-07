@@ -25,7 +25,8 @@ int semID;
 void firstSigIntHandler(int sig);
 void secondSigIntHandler(int sig);
 void sigAlarmHandler(int sig);
-
+void blockINT();
+void unblockINT();
 void terminazioneSicura();
 void printBoard();
 int getPlayIndex();
@@ -61,8 +62,12 @@ void sigUser1Handler(int sig){
             printf("Time-out scaduto!\n");
             printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
 
+            
+            blockINT();
             //Mi metto in attesa che, l'altro giocatore esegua la mossa
             s_wait(semID, playerIndex);
+
+            unblockINT();
             printBoard();
             printf("Inserisci coordinate posizione (x y)\n");
             break;
@@ -151,7 +156,9 @@ int main(int argC, char * argV[]) {
         printBoard();
         printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
         //Attende il proprio turno
+        blockINT();
         s_wait(semID, playerIndex);
+        unblockINT();
         printBoard();
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
@@ -204,5 +211,20 @@ void printBoard(){
         }
     }
    
+}
+
+void blockINT() {
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigprocmask(SIG_BLOCK, &mask, NULL);
+}
+
+// Funzione per sbloccare il segnale SIGINT (CTRL+C)
+void unblockINT() {
+    sigset_t mask;
+    sigemptyset(&mask);
+    sigaddset(&mask, SIGINT);
+    sigprocmask(SIG_UNBLOCK, &mask, NULL);
 }
 
