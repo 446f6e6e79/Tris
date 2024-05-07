@@ -25,6 +25,9 @@ int semID;
 void firstSigIntHandler(int sig);
 void secondSigIntHandler(int sig);
 void sigAlarmHandler(int sig);
+void sigUser1Handler(int sig);
+void sigUser2Handler(int sig);
+
 void blockINT();
 void unblockINT();
 void terminazioneSicura();
@@ -74,6 +77,11 @@ void sigUser1Handler(int sig){
     }
 }
 
+void sigUser1Handler(int sig){
+    system("clear");
+    errExit("Il processo Server è stato terminato");
+}
+
 void firstSigIntHandler(int sig){
     printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
     //Cambio ora il comportamento al segnale sigInt
@@ -85,6 +93,7 @@ void firstSigIntHandler(int sig){
 
 void secondSigIntHandler(int sig){
     terminazioneSicura();
+
     printf("\nIl gioco è stato terminato.\n");
     exit(1);
 }

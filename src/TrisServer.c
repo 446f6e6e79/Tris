@@ -45,6 +45,9 @@ void firstSigIntHandler(int sig){
 void secondSigIntHandler(int sig){
     printf("\nIl gioco è stato terminato.\n");
     terminazioneSicura();
+    if (kill(sD->pids[1], SIGUSR2) == -1 || kill(sD->pids[2], SIGUSR2) == -1) {
+        errExit("Errore nell'invio del segnale al client");
+    }
     exit(0);
 }
 
@@ -58,8 +61,6 @@ void sigAlarmHandler(int sig){
     if (kill(sD->pids[activePlayerIndex], SIGUSR1) == -1) {
         errExit("Errore nella fine TimeOut");
     }
-
-    
 }
 
 /*  
