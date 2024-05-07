@@ -16,6 +16,7 @@
 int shmid;
 sharedData *sD;
 int  playerIndex;
+int otherPlayerIndex;
 int semID;
 
 //Definizione prototipi
@@ -29,9 +30,23 @@ int getPlayIndex();
 
 void sigUser1Handler(int sig){
     //Resetto il comportamento di CTRL-C
-    signal(SIGINT, firstSigIntHandler);
+    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+        errExit("Errore nel SIGINT Handler");
+    }
 
     switch(sD->stato){
+        case 0:
+            printf("\nLa partita è terminata in pareggio!\n");
+            break;
+        case 1:
+        case 2:
+            if(sD->stato == playerIndex){
+                printf("\nComplimenti! Hai vinto!\n");
+            }
+            else{
+                printf("\n%s ha vinto la partita!\n", sD->playerName[otherPlayerIndex]);
+            }
+            break;
         case 3:
             //Fine TIME-OUT
             s_signal(semID, (playerIndex%2)+1);
@@ -42,7 +57,10 @@ void sigUser1Handler(int sig){
 void firstSigIntHandler(int sig){
     printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
     //Cambio ora il comportamento al segnale sigInt
-    signal(SIGINT, secondSigIntHandler);
+    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+        terminazioneSicura();
+        errExit("Error registering SIGINT handler");
+    }
 }
 
 void secondSigIntHandler(int sig){
@@ -51,7 +69,14 @@ void secondSigIntHandler(int sig){
 }
 
 int main(int argC, char * argV[]) {
-
+    //Setto il nuvo comportamento dei segnali
+    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+        errExit("Errore nel SIGINT Handler");
+    }
+    if (signal(SIGUSR1, sigUser1Handler) == SIG_ERR) {
+        errExit("Errore nel SIGUSR1 Handler");
+    }
+    
     if(argC < 2 || argC > 3){
         printf("Usage: %s <nomeUtente>", argV[0]);
         return 1;
@@ -104,20 +129,20 @@ int main(int argC, char * argV[]) {
     /*
         La memoria condivisa è stata correttamente settata, può ora iniziare il gioco
     */
+    otherPlayerIndex = (playerIndex%2)+1
     
-    do{
+    do{    
         //Attende il proprio turno
         printBoard();
+        printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex]); 
         s_wait(semID, playerIndex);
         printBoard();
         sD->activePlayerIndex = playerIndex;
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
-        //Libera il processo successivo
-        s_signal(semID, (playerIndex%2)+1);
+        //Libera l'altro processo
+        s_signal(semID, otherPlayerIndex);
     }while(1);
-    
- 
     
     terminazioneSicura();
     return 0;

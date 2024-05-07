@@ -24,10 +24,7 @@ void firstSigIntHandler(int sig);
 void secondSigIntHandler(int sig);
 void sigAlarmHandler(int sig);
 
-void switchRound();
 void terminazioneSicura();
-
-
 
 int checKVerticalWin();
 int checkHorizontalWin();
@@ -38,7 +35,10 @@ int checkResult();
 void firstSigIntHandler(int sig){
     printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
     //Cambio ora il comportamento al segnale sigInt
-    signal(SIGINT, secondSigIntHandler);
+    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+        terminazioneSicura();
+        errExit("Error registering SIGINT handler");
+    }
 }
 
 void secondSigIntHandler(int sig){
@@ -63,8 +63,11 @@ void sigAlarmHandler(int sig){
     INIZIO MAIN
 */
 int main(int argC, char * argV[]){
+
     //Setto il nuvo comportamento dei segnali
-    signal(SIGINT, firstSigIntHandler);
+    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+        errExit("Errore nel SIGINT Handler");
+    }
 
     int timeOut;
     
@@ -73,6 +76,7 @@ int main(int argC, char * argV[]){
         printf("Usage: %s <timeout> <SimboloPlayer1> <SimboloPlayer2>\n", argV[0]);
         return 1;
     }
+    
     //Converto il valore di timeout in un intero
     timeOut = atoi(argV[1]);
     if(timeOut < 0){
@@ -137,9 +141,10 @@ int main(int argC, char * argV[]){
     //Libero il semaforo del primoPlayer
     s_signal(semID, 1);
 
-    /*
-        INIZIO GIOCO
-    */
+    /**************************************************+
+                    INIZIO GIOCO
+    **************************************************+*/
+
     do{
         //Resetta l'alarm precedente, se presente
         alarm(0);
@@ -160,12 +165,11 @@ int main(int argC, char * argV[]){
             //Setto stato a pareggio
             sD -> stato = 0;
         }
-        /*if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
+        if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
             perror("Errore nell'invio del segnale al client");
         }
-        */
-
     }while(1);
+
     terminazioneSicura();   
 }
 
