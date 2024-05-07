@@ -115,7 +115,7 @@ int main(int argC, char * argV[]){
     }
     
     //Generazione della memoria condivisa
-    shmid = shmget(69, sizeof(sharedData), 0666 | IPC_CREAT );
+    shmid = shmget(69, sizeof(sharedData), 0666 | IPC_CREAT | IPC_EXCL);
     if(shmid < 0){
         errExit("Errore nella generazione della memoria condivisa\n");
     }
@@ -139,7 +139,7 @@ int main(int argC, char * argV[]){
     }
 
     //Iniziallizzazione dei semafori
-    semID =  semget(70, NUM_SEM, IPC_CREAT | 0666 );
+    semID =  semget(70, NUM_SEM, IPC_CREAT | IPC_EXCL | 0666 );
     if(semID == -1){
         errExit("Errore nella get del semaforo\n");
     }

@@ -12,6 +12,7 @@
 
 #define BOARD_SIZE 9
 #define SEM_SERVER 3
+#define PID_SERVER 0
 #define BUFF_SIZE 64
 
 //Definizione variabili globali
@@ -25,6 +26,9 @@ int semID;
 void firstSigIntHandler(int sig);
 void secondSigIntHandler(int sig);
 void sigAlarmHandler(int sig);
+void sigUser1Handler(int sig);
+void sigUser2Handler(int sig);
+
 void blockINT();
 void unblockINT();
 void terminazioneSicura();
@@ -35,10 +39,11 @@ void cleanInputBuffer();
 
 void sigUser1Handler(int sig){
     //Resetto il comportamento di CTRL-C
+    printf("Ricebuto segnale 1\n");
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGINT Handler");
     }
-    
+
     switch(sD->stato){
         case 0:
             printf("\nLa partita è terminata in pareggio!\n");
@@ -61,13 +66,26 @@ void sigUser1Handler(int sig){
             printBoard();
             printf("Time-out scaduto!\n");
             printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
-     
+
+            
+            blockINT();
             //Mi metto in attesa che, l'altro giocatore esegua la mossa
             s_wait(semID, playerIndex);
+
+            unblockINT();
             printBoard();
             printf("Inserisci coordinate posizione (x y)\n");
             break;
+        
+        case 4: //Uno dei due giocatori si è disconnesso
+            printf("%s si è disconnesso\nHai vinto a tavolino!\n",sD->playerName[otherPlayerIndex - 1]);
+            break;
     }
+}
+
+void sigUser2Handler(int sig){
+    system("clear");
+    errExit("Il processo Server è stato terminato\n");
 }
 
 void firstSigIntHandler(int sig){
@@ -80,18 +98,29 @@ void firstSigIntHandler(int sig){
 }
 
 void secondSigIntHandler(int sig){
+    //Avviso il server della mia disconnessione
+    sD->indexPlayerLefted = playerIndex;
+    if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
+        errExit("Errore nella comunicazione terminazione\n");
+    }
+    printf("\nHai abbandonato la partita.\n");
     terminazioneSicura();
-    printf("\nIl gioco è stato terminato.\n");
-    exit(1);
 }
 
+/***********************
+    INIZIO MAIN
+************************/
 int main(int argC, char * argV[]) {
+    printf("%d\n", getpid());
     //Setto il nuvo comportamento dei segnali
-    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR ) {
         errExit("Errore nel SIGINT Handler");
     }
     if (signal(SIGUSR1, sigUser1Handler) == SIG_ERR) {
         errExit("Errore nel SIGUSR1 Handler");
+    }
+    if (signal(SIGUSR2, sigUser2Handler) == SIG_ERR) {
+        errExit("Errore nel SIGUSR2 Handler");
     }
     
     if(argC < 2 || argC > 3){
@@ -152,7 +181,7 @@ int main(int argC, char * argV[]) {
         printBoard();
         printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
         //Attende il proprio turno
-        //blockINT();
+        blockINT();
         s_wait(semID, playerIndex);
         unblockINT();
         printBoard();
