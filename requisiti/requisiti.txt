@@ -1,6 +1,10 @@
-Le system call che dovranno obbligatoriamente essere utilizzate saranno: la gestione dei processi figli, 
-la memoria condivisa, i semafori e i segnali tra processi.
-Resta facoltà dello studente utilizzare ulteriori system call viste a lezione.
-L’applicazione dovrà essere composta almeno da due eseguibili:
-• TrisServer che si dovrà occupare di inizializzare il gioco, (predisporre, ad esempio, l’area di memoria condivisa semafori etc.) e di arbitrare la partita tra i 2 giocatori, indicando a ogni mossa se qualcuno ha vinto.
-• TrisClient che si occupa di far giocare il singolo giocatore, raccogliendo la mossa del giocatore e visualizzando il rettangolo di gioco.
+-Fixxare bug ctrl-c durante attesa e pulizia buffer
+-Implementare possibilità di giocare
+-Avvertire vittoria per abbandono
+
+SCRIVERE STA ROBA SUI FILE SORGENTE
+/************************************
+*Matricola
+*Nome e cognome
+*Data di realizzazione
+*************************************/
