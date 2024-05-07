@@ -50,16 +50,16 @@ void secondSigIntHandler(int sig){
 
 //Cambio del turno alla ricezione del segnale SIGALRM
 void sigAlarmHandler(int sig){
-    printf("AAAAA\n");
     //Resetto il comportamento di CTRL-C
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGALR Handler");
     }
     sD -> stato = 3;
-    printf("active player alarm: %d\n", activePlayerIndex);
     if (kill(sD->pids[activePlayerIndex], SIGUSR1) == -1) {
         errExit("Errore nella fine TimeOut");
     }
+
+    
 }
 
 /*  
@@ -149,16 +149,24 @@ int main(int argC, char * argV[]){
                     INIZIO GIOCO
     **************************************************+*/
 
+   //Resetta l'alarm se presente
+    alarm(0);
+
+    //Inizializzo un nuovo timer
+    alarm(timeOut);
+
     do{
+
+        
+        
+        //Attende fino a che activePlayer non ha eseguito la sua mossa
+        s_wait(semID, 3);
+        printf("\nserver startato\n");
 
         //Resetta l'alarm precedente, se presente
         alarm(0);
 
-        //Inizializzo un nuovo timer
-        alarm(timeOut);
         
-        //Attende fino a che activePlayer non ha eseguito la sua mossa
-        s_wait(semID, 3);
 
         int win = checkResult();
         //Se c'è un vincitore
@@ -178,13 +186,11 @@ int main(int argC, char * argV[]){
                 errExit("Errore nell'invio del segnale al client");
             }
         }   
-        printf("active player: %d", sD->activePlayerIndex);
 
         //Aggiorna activePlayerIndex
         activePlayerIndex = (activePlayerIndex%2) + 1;
 
-        printf("next player: %d\n", activePlayerIndex);
-
+        alarm(timeOut);
         //Sblocca il giocaore Successivo
         s_signal(semID, activePlayerIndex);
     }while(1);

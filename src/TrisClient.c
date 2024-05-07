@@ -57,15 +57,14 @@ void sigUser1Handler(int sig){
         
         case 3: //Fine TIME-OUT
             //Sblocco il processo SERVER    
-            s_signal(semID, SEM_SERVER);
-
             printBoard();
             printf("Time-out scaduto!\n");
-            
+            printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
+
             //Mi metto in attesa che, l'altro giocatore esegua la mossa
             s_wait(semID, playerIndex);
-            
             printBoard();
+            printf("Inserisci coordinate posizione (x y)\n");
             break;
     }
 }
@@ -156,7 +155,7 @@ int main(int argC, char * argV[]) {
         printBoard();
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
-        
+
         //Avvisa il processo Server, che una mossa è stata eseguita
         s_signal(semID, SEM_SERVER);
     }while(1);
@@ -177,7 +176,6 @@ int getPlayIndex(){
         printf("Inserisci coordinate posizione (x y)\n");
         scanf("%d %d", &x, &y);
         index = (3 * (y - 1)) + x - 1;
-        printf("INPUT: x = %d, y = %d, index = %d\n", x, y, index);
         if((x >= 1 && x <= 3) && 
             (y >= 1 && y <= 3) &&
             sD->board[index] == ' '){
@@ -190,7 +188,7 @@ int getPlayIndex(){
 }
 
 void printBoard(){
-    //system("clear");
+    system("clear");
     for (int i = 0; i < BOARD_SIZE; i++){
         printf(" %c ", sD->board[i]);
         //Se sono nella cella più a DX
