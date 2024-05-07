@@ -138,16 +138,12 @@ int getPlayIndex(){
         if((x > 1 && x < 3) && 
             (y > 1 || y < 3) &&
             sD->board[index] == ' '){
-            isValid = 1;
+            return index;
         }
-        else{
-            printf("Input non valido!\n");
-        }
+        
+        printf("Input non valido!\n");
     }
-    while(!isValid);
-    
-    //Restituisce l'indice 
-    return index;
+    while(1);
 }
 
 void printBoard(){
