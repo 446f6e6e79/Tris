@@ -11,6 +11,8 @@
 #include "utils.h"
 
 #define BOARD_SIZE 9
+#define SEM_SERVER 3
+#define BUFF_SIZE 64
 
 //Definizione variabili globali
 int shmid;
@@ -28,6 +30,8 @@ void terminazioneSicura();
 void printBoard();
 int getPlayIndex();
 
+void cleanInputBuffer();
+
 void sigUser1Handler(int sig){
     //Resetto il comportamento di CTRL-C
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
@@ -41,15 +45,29 @@ void sigUser1Handler(int sig){
         case 1:
         case 2:
             if(sD->stato == playerIndex){
+                printBoard();
                 printf("\nComplimenti! Hai vinto!\n");
             }
             else{
-                printf("\n%s ha vinto la partita!\n", sD->playerName[otherPlayerIndex]);
+                printBoard();
+                printf("\nHai Perso!\n");
             }
+            terminazioneSicura();
             break;
-        case 3:
-            //Fine TIME-OUT
-            s_signal(semID, (playerIndex%2)+1);
+        
+        case 3: //Fine TIME-OUT
+            //Sblocco il processo SERVER    
+            s_signal(semID, SEM_SERVER);
+
+            printBoard();
+            printf("Time-out scaduto!\n");
+            
+            //Mi metto in attesa che, l'altro giocatore esegua la mossa
+            s_wait(semID, playerIndex);
+            
+            //Aggiorna la variabile condivisa activePlayerIndex
+            sD->activePlayerIndex = playerIndex;
+            printBoard();
             break;
     }
 }
@@ -57,7 +75,7 @@ void sigUser1Handler(int sig){
 void firstSigIntHandler(int sig){
     printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
     //Cambio ora il comportamento al segnale sigInt
-    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+    if (signal(SIGINT, secondSigIntHandler) == SIG_ERR) {
         terminazioneSicura();
         errExit("Error registering SIGINT handler");
     }
@@ -66,6 +84,7 @@ void firstSigIntHandler(int sig){
 void secondSigIntHandler(int sig){
     terminazioneSicura();
     printf("\nIl gioco è stato terminato.\n");
+    exit(1);
 }
 
 int main(int argC, char * argV[]) {
@@ -114,7 +133,7 @@ int main(int argC, char * argV[]) {
         sD->pids[playerIndex] = getpid();
 
         if(playerIndex == 2){
-            semOp(semID, 3, +3);
+            semOp(semID, SEM_SERVER, +3);
         }
         else{
             printf("In attesa dell'altro giocatore!\n");
@@ -124,24 +143,26 @@ int main(int argC, char * argV[]) {
     s_signal(semID, 0);
 
     //Rimango in attesa, fino a che entrambi i giocatori sono attivi
-    s_wait(semID, 3);
+    s_wait(semID, SEM_SERVER);
 
     /*
         La memoria condivisa è stata correttamente settata, può ora iniziare il gioco
     */
-    otherPlayerIndex = (playerIndex%2)+1
     
+    otherPlayerIndex = (playerIndex%2)+1;
     do{    
+        printBoard();
+        printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
         //Attende il proprio turno
-        printBoard();
-        printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex]); 
         s_wait(semID, playerIndex);
-        printBoard();
+        //Aggiorna la variabile condivisa activePlayerIndex
         sD->activePlayerIndex = playerIndex;
+        printBoard();
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
-        //Libera l'altro processo
-        s_signal(semID, otherPlayerIndex);
+        
+        //Avvisa il processo Server, che una mossa è stata eseguita
+        s_signal(semID, SEM_SERVER);
     }while(1);
     
     terminazioneSicura();
@@ -151,17 +172,18 @@ int main(int argC, char * argV[]) {
 void terminazioneSicura(){
     //Chiusura memoria condivisa con attach
     shmdt((void *) sD);
+    exit(1);
 }
 
 int getPlayIndex(){
-    int x,y, index, isValid = 0;
+    int x,y, index;
     do{
         printf("Inserisci coordinate posizione (x y)\n");
         scanf("%d %d", &x, &y);
         index = (3 * (y - 1)) + x - 1;
-
-        if((x > 1 && x < 3) && 
-            (y > 1 || y < 3) &&
+        printf("INPUT: x = %d, y = %d, index = %d\n", x, y, index);
+        if((x >= 1 && x <= 3) && 
+            (y >= 1 && y <= 3) &&
             sD->board[index] == ' '){
             return index;
         }
@@ -172,10 +194,10 @@ int getPlayIndex(){
 }
 
 void printBoard(){
-    system("clear");
+    //system("clear");
     for (int i = 0; i < BOARD_SIZE; i++){
         printf(" %c ", sD->board[i]);
-        //Se sono nella cella più  a DX
+        //Se sono nella cella più a DX
         if ( (i + 1) % 3 == 0){
             printf("\n");
             //Se non sono nell'ultima riga
@@ -187,5 +209,6 @@ void printBoard(){
             printf("|");
         }
     }
+   
 }
 

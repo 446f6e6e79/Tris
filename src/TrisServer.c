@@ -35,7 +35,7 @@ int checkResult();
 void firstSigIntHandler(int sig){
     printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
     //Cambio ora il comportamento al segnale sigInt
-    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+    if (signal(SIGINT, secondSigIntHandler) == SIG_ERR) {
         terminazioneSicura();
         errExit("Error registering SIGINT handler");
     }
@@ -49,13 +49,14 @@ void secondSigIntHandler(int sig){
 
 //Cambio del turno alla ricezione del segnale SIGALRM
 void sigAlarmHandler(int sig){
+    printf("AAAAA\n");
     //Resetto il comportamento di CTRL-C
-    signal(SIGINT, firstSigIntHandler);
-
+    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
+        errExit("Errore nel SIGALR Handler");
+    }
     sD -> stato = 3;
     if (kill(sD->pids[sD->activePlayerIndex], SIGUSR1) == -1) {
-        perror("Errore nella fine TimeOut");
-        exit(EXIT_FAILURE);
+        errExit("Errore nella fine TimeOut");
     }
 }
 
@@ -94,7 +95,7 @@ int main(int argC, char * argV[]){
     }
     
     //Generazione della memoria condivisa
-    shmid = shmget(69, sizeof(sharedData), 0666 | IPC_CREAT | IPC_EXCL);
+    shmid = shmget(69, sizeof(sharedData), 0666 | IPC_CREAT /*| IPC_EXCL */);
     if(shmid < 0){
         errExit("Errore nella generazione della memoria condivisa\n");
     }
@@ -118,7 +119,7 @@ int main(int argC, char * argV[]){
     }
 
     //Iniziallizzazione dei semafori
-    semID =  semget(70, NUM_SEM, IPC_CREAT | IPC_EXCL | 0666 );
+    semID =  semget(70, NUM_SEM, IPC_CREAT /*| IPC_EXCL */ | 0666 );
     if(semID == -1){
         errExit("Errore nella get del semaforo\n");
     }
@@ -126,6 +127,7 @@ int main(int argC, char * argV[]){
     unsigned short values[4] = {1, 0, 0, 0};
     union semun arg;
     arg.array = values;
+
 
     if (semctl(semID, 0, SETALL, arg) == -1){
         terminazioneSicura();
@@ -146,6 +148,7 @@ int main(int argC, char * argV[]){
     **************************************************+*/
 
     do{
+
         //Resetta l'alarm precedente, se presente
         alarm(0);
 
@@ -153,21 +156,28 @@ int main(int argC, char * argV[]){
         alarm(timeOut);
         
         //Attende fino a che activePlayer non ha eseguito la sua mossa
-
+        s_wait(semID, 3);
 
         int win = checkResult();
         //Se c'è un vincitore
-        if(checkResult()){
+        if(win){
             //Setto stato a vittoria
             sD -> stato = win;
+            if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
+                terminazioneSicura();
+                errExit("Errore nell'invio del segnale al client");
+            }
         }
         else if(checkFull()){
             //Setto stato a pareggio
             sD -> stato = 0;
-        }
-        if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
-            perror("Errore nell'invio del segnale al client");
-        }
+            if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
+                terminazioneSicura();
+                errExit("Errore nell'invio del segnale al client");
+            }
+        }   
+        int nextPlayer = (sD -> activePlayerIndex)%2 + 1;
+        s_signal(semID, nextPlayer);
     }while(1);
 
     terminazioneSicura();   
