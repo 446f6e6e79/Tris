@@ -1,3 +1,11 @@
+TO DO:
+    - controllo dei vari casi di vittoria;
+    - implementazione bot(scelta casuale della casella, non occupata);
+    - implementazione semaforo nel main. Per eliminare attesa attiva!!!
+    - Gestione ctrl + c nel client (la prima può essere definita direttamente in utils).
+        Seconda pressione deve notificare il client che il giocatore ha abbandonato. L'altro giocatore vince a tavolino
+
+
 FUNZIONAMENTO NORMALE DEL GIOCO:
 
 SEMAFORO SPlayer1 = 1, SPlayer2 = 0  -> Ipotizziamo che il primo round sia sempre giocato dal giocatore p1
