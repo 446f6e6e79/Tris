@@ -32,7 +32,7 @@ Analisi funzionamento:
 
     - Nel caso in cui uno dei due client abbandona la partita:
         - il processo client invia un segnale SIGUSR1 al processo SERVER, segnalando inoltre il proprio indice
-        - il processo server a quel punto invia un segnale
+        - il processo server a quel punto invia un segnale SIGUSR1 all'altro processo
 
 
 SEMAFORI:

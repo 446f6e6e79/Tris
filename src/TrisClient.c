@@ -37,6 +37,7 @@ sharedData * getSharedMemoryPointer(int);
 void terminazioneSicura();
 void printBoard();
 int getPlayIndex();
+void comunicaDisconnessione();
 
 /*
     Definisco l'HANDLER per il segnale SIGUSR1. A seconda del valore della variabile stato, assume comportamenti diversi:à
@@ -83,14 +84,41 @@ void sigUser1Handler(int sig){
             printf("Inserisci coordinate posizione (x y)\n");
             break;
         
-        case 4: //Uno dei due giocatori si è disconnesso
+        case 4: //L'altro giocatore si è disconnesso
             system("clear");
+            s_wait(semID, SEM_MUTEX);
+
             printf("%s si è disconnesso\nHai vinto a tavolino!\n",sD->playerName[getOtherPlayerIndex(playerIndex) - 1]);
-            terminazioneSicura();
+            printf("\nDesideri giocare ancora? [S, N]:\n");
+            char c;
+            scanf("%c", &c);
+            while(c != 'S' && c != 'N'){
+                system("clear");
+                printf("\nDesideri giocare ancora? [S, N]:\n");
+            }
+
+            if(c == 'S'){
+                //Resetto l'area di memoria condivisa, mettendomi come giocatore1
+                if(playerIndex != 1){
+                    playerIndex = 1;
+                    strcpy(sD->playerName[playerIndex - 1], sD->playerName[playerIndex - 1]);
+                    sD->pids[playerIndex] = getpid();
+                    s_signal(semID, SEM_MUTEX);
+                    
+                }
+                //Altrimenti l'are di memoria è già correttamente settata
+                //TO DO: AVVIO UN ALTRA PARTITA
+            }
+            //Caso in cui non voglio più giocare
+            else{
+                sD->activePlayer--;
+                comunicaDisconnessione();
+                s_signal(semID, SEM_MUTEX);
+                terminazioneSicura();
+            }
             break;
     }
 }
-
 /*
     Handler per il segnale SIGUSR2:
         nel processo giocatore, la ricezione di tale segnale rappresenta la chiusura del server
@@ -121,14 +149,11 @@ void secondSigIntHandler(int sig){
     s_wait(semID, SEM_MUTEX);
         //Aggiorno i valori della memoria condivisa
         sD->indexPlayerLefted = playerIndex;
-        sD -> activePlayer--;
-        //Avviso il server del mio abbandono
-        if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
-            printf("Errore nella comunicazione terminazione\n");
-            terminazioneSicura();
-        }
-        printf("\nHai abbandonato la partita.\n");
-        terminazioneSicura();
+        comunicaDisconnessione();
+    //Sblocco il semaforo di MUTEX
+    s_signal(semID, SEM_MUTEX);
+    printf("\nHai abbandonato la partita.\n");
+    terminazioneSicura();
 }
 
 /***********************
@@ -283,4 +308,16 @@ sharedData * getSharedMemoryPointer(int shmid){
         errExit("Errore nell'attach alla memoria condivisa\n");
     }
     return sD;
+}
+/*
+    Decremento il valore di activePlayer, invio il segnale al server.
+    Tale funzione, in quanto accede alla memoria condivisa, dovrà essere racchiusa in un semaforo mutex
+*/
+void comunicaDisconnessione(){
+    system("clear");
+    sD->activePlayer--;
+    //Avviso il server che entrambi abbiamo abbandonato
+    if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
+        printf("Errore nella comunicazione terminazione\n");
+    }
 }

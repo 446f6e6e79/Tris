@@ -32,6 +32,7 @@ void sigAlarmHandler(int);
 
 void terminazioneSicura();
 
+void initializeEmptyBoard();
 int checKVerticalWin();
 int checkHorizontalWin();
 int checkDiagonalWin();
@@ -73,12 +74,25 @@ void sigAlarmHandler(int sig){
 }
 /* Handler che gestisce il caso: uno dei due processi si è disconnesso*/
 void sigUsr1Handler(int sig){
-    sD->stato = 4;
-    if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1){
-        errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4");
-    }
-    terminazioneSicura();
-    exit(0);
+    //Controllo quanti giocatori sono rimasti:
+    s_wait(semID, SEM_MUTEX);
+        //C'è ancora un giocatore attivo, invio il segnale comunicando la sua vittoria
+        if(sD->activePlayer == 1){
+            //Disattivo il time-out
+            alarm(0);
+            //Svuoto l'area di gioco
+            initializeEmptyBoard();
+            sD->stato = 4;
+            if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1){
+                errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4");
+            }
+            s_signal(semID, SEM_MUTEX);    
+        }
+        else{
+            printf("Entrambi i giocatori anno abbandonato la partita\n");
+            terminazioneSicura();
+            exit(0);            
+        }
 }
 
 
@@ -137,9 +151,10 @@ int main(int argC, char * argV[]){
     sD -> player[1] = argV[3][0];
     sD -> activePlayer = 0;
     sD -> pids[0] = getpid();
-    for(int i = 0; i < BOARD_SIZE; i++){
-        sD -> board[i] = ' ';
-    }
+    
+    //Inizializzo la board di gioco vuota
+    initializeEmptyBoard();
+    
     //Iniziallizzazione dei semafori
     semID =  semget(SEM_KEY, NUM_SEM, IPC_CREAT | 0666 );
     if(semID == -1){
@@ -300,4 +315,10 @@ int checkResult(){
         return checkDiagonalWin();
     }
     return checkFull();
+}
+
+void initializeEmptyBoard(){
+    for(int i = 0; i < BOARD_SIZE; i++){
+        sD -> board[i] = ' ';
+    }
 }
