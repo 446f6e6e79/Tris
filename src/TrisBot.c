@@ -11,6 +11,7 @@
 #include <sys/sem.h>
 #include <sys/shm.h>
 #include <string.h>
+#include <time.h>
 #include "errExit.h"
 #include "semaphore.h"
 #include "utils.h"
@@ -23,6 +24,7 @@ int playerIndex;
 int semID;
 
 void getBotPlay();
+void terminazioneSicura();
 
 int main() {
     //Inizializzo il random
