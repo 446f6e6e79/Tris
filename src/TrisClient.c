@@ -1,3 +1,9 @@
+/************************************
+*VR485945, VR485743
+*Davide Donà, Andrea Blushi
+*Data di realizzazione: 06-05-24
+*************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -112,13 +118,17 @@ void firstSigIntHandler(int sig){
         - Abbandono la partita, terminando in modo sicuro il processo.
 */
 void secondSigIntHandler(int sig){
-    //Avviso il SERVER della mia disconnessione
-    sD->indexPlayerLefted = playerIndex;
-    if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
-        errExit("Errore nella comunicazione terminazione\n");
-    }
-    printf("\nHai abbandonato la partita.\n");
-    terminazioneSicura();
+    s_wait(semID, SEM_MUTEX);
+        //Aggiorno i valori della memoria condivisa
+        sD->indexPlayerLefted = playerIndex;
+        sD -> activePlayer--;
+        //Avviso il server del mio abbandono
+        if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
+            printf("Errore nella comunicazione terminazione\n");
+            terminazioneSicura();
+        }
+        printf("\nHai abbandonato la partita.\n");
+        terminazioneSicura();
 }
 
 /***********************
@@ -163,13 +173,9 @@ int main(int argC, char * argV[]) {
     //Recupero lo shareMemoryID
     shmid = sharedMemoryAttach();
 
-    printf("AAA %d\n", shmid);
     //Ottengo il puntatore all'area di memoria condivisa
     sD = getSharedMemoryPointer(shmid);
     
-    printf("AAA %d\n", sD->pids[0]);
-
-
     /***********************************
      *  Inizializzazione memoria CONDIVISA
      *      essendo una sezione critica, l'accesso deve essere protetto
@@ -177,7 +183,12 @@ int main(int argC, char * argV[]) {
      *      Un solo processo alla volta può modificare la memoria condivisa.
     ************************************/
     s_wait(semID, SEM_MUTEX);
-        printf("AAAA\n");
+        //Se sono già presenti due giocatori
+        if(sD->activePlayer >= 2){                               
+            printf("E' già stato raggiunto il numero massimo di giocatori\n");
+            s_signal(semID, SEM_MUTEX);                         //Sblocco il semaforo
+            terminazioneSicura();                               //Termino il processo.
+        }
         sD->activePlayer++;                                     //Incremento il numero di giocatoriAttivi
         playerIndex = sD->activePlayer;                         //Salvo, nella variabile playerIndex l'indice del giocatore
         strcpy(sD->playerName[playerIndex - 1], argV[1]);       //Copio nella memoria condivisa il nome del giocatore, passato come parameteo

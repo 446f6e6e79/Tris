@@ -2,9 +2,41 @@
 -Implementare possibilità di giocare
 -Avvertire vittoria per abbandono
 
-SCRIVERE STA ROBA SUI FILE SORGENTE
-/************************************
-*Matricola
-*Nome e cognome
-*Data di realizzazione
-*************************************/
+Analisi funzionamento:
+    - avviato il processo server:
+        - generazione della la memoria condivisa
+        - inizializzazione della memoria condivisa
+        - generazione dei semafori
+        - inizializzazione dei semafori a [1, 0, 0, 0]
+        - Il processo server si pone in attesa sul semaforo SEM_SERVER
+
+    - Avvio del primo processo Giocatore:
+        - Recupera l'ID dei semafori
+        - Recupera l'area di memoria condivisa
+        - Prende il possesso di SEM_MUTEX
+            - Setta l'area di memoria condivisa
+        - Sblocca il semaforo SEM_MUTEX al processo successivo
+        - Rimane in attesa su SEM_SERVER
+    
+    - Avvio del secondo processo Giocatore
+        - Recupera l'ID dei semafori
+        - Recupera l'area di memoria condivisa
+        - Prende il possesso di SEM_MUTEX
+            - Setta l'area di memoria condivisa
+        - Sblocca il semaforo SEM_SERVER a 3 processi
+        - Esegue una WAIT su SEM_SERVER, ma senza rimanere bloccato
+
+    - Nel caso il server venga interrotto:
+        - viene mandato SIGUSR2 ad entrambi i processi che stavano giocando.
+            nei Client, l'handler di tale segnale segnala a video la terminazione del server, terminando quindi la partita!
+
+    - Nel caso in cui uno dei due client abbandona la partita:
+        - il processo client invia un segnale SIGUSR1 al processo SERVER, segnalando inoltre il proprio indice
+        - il processo server a quel punto invia un segnale
+
+
+SEMAFORI:
+    1) SEM_MUTEX         -> Usato per implementare un mutex tra i due processi client, durante la fase di inizializzazione nella memoria condivisa
+    2, 3) SEM_P1, SEM_P2 -> Usato per implementare l'alternanza tra i giocatori
+    4) SEM_SERVER        -> Il processo server rimane in attesa su tale semaforo, fino a che non viene sbloccato dalla giocata di uno dei due giocatori.
+                            E' inoltre usato inizialmente

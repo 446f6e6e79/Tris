@@ -1,3 +1,9 @@
+/************************************
+*VR485945, VR485743
+*Davide Donà, Andrea Blushi
+*Data di realizzazione: 06-05-24
+*************************************/
+
 #include <sys/sem.h>
 #include <stdio.h>
 #include "errExit.h"
