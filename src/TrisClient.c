@@ -16,7 +16,7 @@
 //Definizione variabili globali
 int shmid;
 sharedData *sD;
-int  playerIndex;
+int playerIndex;
 
 int semID;
 
@@ -27,6 +27,7 @@ void sigAlarmHandler(int sig);
 void sigUser1Handler(int sig);
 void sigUser2Handler(int sig);
 
+sharedData * getSharedMemoryPointer(int);
 void terminazioneSicura();
 void printBoard();
 int getPlayIndex();
@@ -66,7 +67,7 @@ void sigUser1Handler(int sig){
             //Sblocco il processo SERVER    
             printBoard();
             printf("Time-out scaduto!\n");
-            printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
+            printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
 
             //Mi metto in attesa che, l'altro giocatore esegua la mossa
             s_wait(semID, playerIndex);
@@ -78,7 +79,7 @@ void sigUser1Handler(int sig){
         
         case 4: //Uno dei due giocatori si è disconnesso
             system("clear");
-            printf("%s si è disconnesso\nHai vinto a tavolino!\n",sD->playerName[otherPlayerIndex - 1]);
+            printf("%s si è disconnesso\nHai vinto a tavolino!\n",sD->playerName[getOtherPlayerIndex(playerIndex) - 1]);
             terminazioneSicura();
             break;
     }
@@ -162,8 +163,11 @@ int main(int argC, char * argV[]) {
     //Recupero lo shareMemoryID
     shmid = sharedMemoryAttach();
 
+    printf("AAA %d\n", shmid);
     //Ottengo il puntatore all'area di memoria condivisa
-    sD = getSharedMemoryPointer();
+    sD = getSharedMemoryPointer(shmid);
+    
+    printf("AAA %d\n", sD->pids[0]);
 
 
     /***********************************
@@ -173,6 +177,7 @@ int main(int argC, char * argV[]) {
      *      Un solo processo alla volta può modificare la memoria condivisa.
     ************************************/
     s_wait(semID, SEM_MUTEX);
+        printf("AAAA\n");
         sD->activePlayer++;                                     //Incremento il numero di giocatoriAttivi
         playerIndex = sD->activePlayer;                         //Salvo, nella variabile playerIndex l'indice del giocatore
         strcpy(sD->playerName[playerIndex - 1], argV[1]);       //Copio nella memoria condivisa il nome del giocatore, passato come parameteo
@@ -259,4 +264,12 @@ void printBoard(){
             printf("|");
         }
     }
+}
+
+sharedData * getSharedMemoryPointer(int shmid){
+    sharedData* sD = (sharedData *)shmat(shmid, NULL, 0);
+    if (sD == (void *)-1) {
+        errExit("Errore nell'attach alla memoria condivisa\n");
+    }
+    return sD;
 }

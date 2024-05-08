@@ -145,8 +145,7 @@ int main(int argC, char * argV[]){
     unsigned short values[4] = {1, 0, 0, 0};
     union semun arg;
     arg.array = values;
-
-
+    
     if (semctl(semID, 0, SETALL, arg) == -1){
         terminazioneSicura();
         printf("semctl GETALL failed");
