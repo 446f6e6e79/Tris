@@ -1,4 +1,7 @@
 #include "utils.h"
+#include <sys/sem.h>
+#include <stdlib.h>
+#include <sys/shm.h>
 
 int getOtherPlayerIndex(int index){
     return (index % 2) + 1;

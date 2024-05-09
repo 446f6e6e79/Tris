@@ -31,3 +31,11 @@ $(OBJ_DIR)/%.o: src/%.c
 	@$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
 .PHONY: clean directories
+
+clean:
+	@echo "Cleaning up..."
+	@$(RM) -r $(OBJ_DIR) $(BIN_DIR)
+
+directories:
+	@mkdir -p $(OBJ_DIR)
+	@mkdir -p $(BIN_DIR)

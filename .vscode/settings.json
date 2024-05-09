@@ -3,7 +3,8 @@
         "stdio.h": "c",
         "types.h": "c",
         "semaphore.h": "c",
-        "sem.h": "c"
+        "sem.h": "c",
+        "unistd.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

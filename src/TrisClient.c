@@ -47,11 +47,6 @@ void comunicaDisconnessione();
         - stato = 4 -> l'altro giocatore si è disconnesso dalla partita
 */
 void sigUser1Handler(int sig){
-    //Resetto il comportamento di CTRL-C
-    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
-        errExit("Errore nel SIGINT Handler");
-    }
-
     switch(sD->stato){
         case 0://La partita termina in pareggio
             printf("\nLa partita è terminata in pareggio!\n");
@@ -102,7 +97,7 @@ void sigUser1Handler(int sig){
                 //Resetto l'area di memoria condivisa, mettendomi come giocatore1
                 if(playerIndex != 1){
                     playerIndex = 1;
-                    strcpy(sD->playerName[playerIndex - 1], sD->playerName[playerIndex - 1]);
+                    strcpy(sD->playerName[playerIndex - 1], sD->playerName[1]);
                     sD->pids[playerIndex] = getpid();
                     s_signal(semID, SEM_MUTEX);
                     
@@ -140,7 +135,12 @@ void firstSigIntHandler(int sig){
         terminazioneSicura();
         errExit("Error registering SIGINT handler");
     }
+    /* Faccio partire un alarm di 5 secondi.
+        Se arriva prima che il processo riprema ctrl + c, resetto il comportamento iniziale
+    */ 
+    alarm(5);
 }
+
 /*
     Handler per il secondo segnale SIGINT:
         - Avviso il processo server dell'abbandono della partita
@@ -157,13 +157,24 @@ void secondSigIntHandler(int sig){
     terminazioneSicura();
 }
 
+//Allo scadere dell'alarm, resetto il comportamento di CTRL-C
+void sigAlarmHandler(int sig){
+    //Resetto il comportamento di CTRL-C ad ogni turno
+    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR ) {
+        errExit("Errore nel SIGINT Handler");
+    }
+    printf("Resettato il comportamento di CTRL-C\n");
+}
+
 /***********************
     INIZIO MAIN
 ************************/
 int main(int argC, char * argV[]) {
 
     int otherPlayerIndex;
-    
+    if (signal(SIGALRM, sigAlarmHandler) == SIG_ERR) {
+            errExit("change signal handler failed");
+    }
     //Setto il nuvo comportamento dei segnali
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR ) {
         errExit("Errore nel SIGINT Handler");
@@ -302,7 +313,9 @@ void printBoard(){
         }
     }
 }
-
+/*
+    Ritorna il puntatore alla zona di memoria condivisa
+*/
 sharedData * getSharedMemoryPointer(int shmid){
     sharedData* sD = (sharedData *)shmat(shmid, NULL, 0);
     if (sD == (void *)-1) {
