@@ -100,9 +100,13 @@ void sigUser1Handler(int sig){
                     strcpy(sD->playerName[playerIndex - 1], sD->playerName[1]);
                     sD->pids[playerIndex] = getpid();
                     s_signal(semID, SEM_MUTEX);
-                    
+                    printf("Sbloccato il mutex\n"); 
                 }
-                //Altrimenti l'are di memoria è già correttamente settata
+                //Altrimenti l'area di memoria è già correttamente settata
+                //system("clear");
+                printf("In attesa dell'altro giocatore\n");
+                //Attendo che si connetta il secondo giocatore
+                s_wait(semID, SEM_SERVER);
                 //TO DO: AVVIO UN ALTRA PARTITA
             }
             //Caso in cui non voglio più giocare
@@ -220,6 +224,7 @@ int main(int argC, char * argV[]) {
      *      Un solo processo alla volta può modificare la memoria condivisa.
     ************************************/
     s_wait(semID, SEM_MUTEX);
+    printf("MUTEX SUPERATO\n");
         //Se sono già presenti due giocatori
         if(sD->activePlayer >= 2){                               
             printf("E' già stato raggiunto il numero massimo di giocatori\n");
@@ -234,6 +239,7 @@ int main(int argC, char * argV[]) {
         //Se sono il secondo giocatore, sblocco tutti i processi in attesa
         if(playerIndex == 2){                                    
             semOp(semID, SEM_SERVER, +3);
+            printf("Sbloccati i 3 processi in attesa\n");
         }
         //Altrimenti sto in attesa dell'arrivo del secondo player
         else{
@@ -250,7 +256,6 @@ int main(int argC, char * argV[]) {
      *      INIZIO DEL GIOCO
     ************************************/
     otherPlayerIndex = getOtherPlayerIndex(playerIndex);
-    
     do{    
         printBoard();
         printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
@@ -266,7 +271,6 @@ int main(int argC, char * argV[]) {
         //Lettura da input delle coordinate
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
-
         //Avvisa il processo Server, che una mossa è stata eseguita
         s_signal(semID, SEM_SERVER);
     }while(1);

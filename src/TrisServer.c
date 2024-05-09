@@ -63,11 +63,6 @@ void secondSigIntHandler(int sig){
 
 //Cambio del turno alla ricezione del segnale SIGALRM
 void sigAlarmHandler(int sig){
-    //Resetto il comportamento di CTRL-C ad ogni turno
-    if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
-        errExit("Errore nel SIGALR Handler");
-    }
-
     sD -> stato = 3; 
 
     if (kill(sD->pids[activePlayerIndex], SIGUSR1) == -1) {
@@ -88,10 +83,19 @@ void sigUsr1Handler(int sig){
             if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1){
                 errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4");
             }
-            s_signal(semID, SEM_MUTEX);    
+            activePlayerIndex = 1; //Resettiamo come player attivo il primo player ( potrebbero cambiare di posizione)
+
+            //
+            s_signal(semID, SEM_MUTEX);
+            printf("Sbloccato il mutex\n");
+            //Attende che si connetta un ulteriore giocatore
+            s_wait(semID, SEM_SERVER);
+            printf("LIBERO\n");
+            //Libero il semaforo del primoPlayer
+            s_signal(semID, 1);
         }
         else{
-            printf("Entrambi i giocatori anno abbandonato la partita\n");
+            printf("Entrambi i giocatori hanno abbandonato la partita\n");
             terminazioneSicura();
             exit(0);            
         }
