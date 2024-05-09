@@ -76,6 +76,7 @@ void sigUser1Handler(int sig){
             printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
 
             //Mi metto in attesa che, l'altro giocatore esegua la mossa
+            //s_signal(semID, getOtherPlayerIndex(playerIndex));
             s_wait(semID, playerIndex);
          
 
