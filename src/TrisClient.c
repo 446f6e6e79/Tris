@@ -76,7 +76,8 @@ void sigUser1Handler(int sig){
             printf("Time-out scaduto!\n");
             printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
 
-            //Mi metto in attesa che, l'altro giocatore esegua la mossa
+            //Mi metto in attesa e passo il turno attraverso il server
+            s_signal(semID, SEM_SERVER);
             s_wait(semID, playerIndex);
          
 

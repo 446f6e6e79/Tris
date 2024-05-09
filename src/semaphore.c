@@ -7,6 +7,9 @@
 #include <sys/sem.h>
 #include <stdio.h>
 #include "errExit.h"
+#include <errno.h>
+#include <signal.h>
+
 
 /*
     Metodo che esegue un'operazione sul semaforo:
@@ -19,7 +22,12 @@ void semOp(int semid, unsigned short sem_num, short sem_op) {
     struct sembuf op;
     op.sem_num = sem_num;
     op.sem_op = sem_op;    
-    semop(semid, &op, 1);
+    int result = semop(semid, &op, 1);
+    //Questo controllo verifica che l'operazione(wait) non sia stata interrota da un segnale
+    //e nel caso riprende il suo comportamento
+    if( result == -1 && errno == EINTR){
+        semop(semid, &op, 1);
+    }
 }
 /*
     Esegue una wait (P(s)) sul semaforo.

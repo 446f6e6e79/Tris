@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <stdio.h>
 #include "errExit.h"
 #ifndef _UTILS_HH
 #define _UTILS_HH

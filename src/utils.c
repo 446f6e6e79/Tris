@@ -7,7 +7,10 @@ int getOtherPlayerIndex(int index){
 int getSemaforeID(){
     int semID =  semget(SEM_KEY, NUM_SEM, 0666);
     if(semID == -1){
-        errExit("Errore nella get del semaforo\n");
+        //Questo errore si verifica solo nel caso il server non venga avviato o avviato correttamente
+        //perciò si avvisa l'utente del malfunzionamento del server o della sua assenza
+        printf("Non è stato avviato il server\n");
+        exit(1);
     }
     return semID;
 }
@@ -16,7 +19,8 @@ int sharedMemoryAttach(){
     //Recupero lo shareMemoryID usando la systemCall shmget
     int shmid = shmget(MEMORY_KEY, sizeof(sharedData), 0666);
     if (shmid < 0) {
-        errExit("Errore nella generazione della memoria condivisa\n");
+        printf("Non è stato avviato il server\n");
+        exit(1);
     }
     return shmid;
 }
