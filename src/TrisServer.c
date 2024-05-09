@@ -66,7 +66,9 @@ void sigAlarmHandler(int sig){
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGALR Handler");
     }
-    sD -> stato = 3;
+
+    sD -> stato = 3; 
+
     if (kill(sD->pids[activePlayerIndex], SIGUSR1) == -1) {
         errExit("Errore nella fine TimeOut");
     }
