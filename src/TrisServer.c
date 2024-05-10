@@ -169,7 +169,7 @@ int main(int argC, char * argV[]){
         errExit("Errore nella get del semaforo\n");
     }
 
-    unsigned short values[4] = {1, 0, 0, 0};
+    unsigned short values[5] = {1, 0, 0, 0, 0};
     union semun arg;
     arg.array = values;
     
