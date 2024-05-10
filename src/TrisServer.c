@@ -72,7 +72,9 @@ void sigAlarmHandler(int sig){
 /* Handler che gestisce il caso: uno dei due processi si è disconnesso*/
 void sigUsr1Handler(int sig){
     //Controllo quanti giocatori sono rimasti:
+    printf("In attesa del mutex:\n");
     s_wait(semID, SEM_MUTEX);
+    printf("Entrato nel mutex\n");
         //C'è ancora un giocatore attivo, invio il segnale comunicando la sua vittoria
         if(sD->activePlayer == 1){
             //Disattivo il time-out
@@ -81,14 +83,14 @@ void sigUsr1Handler(int sig){
             initializeEmptyBoard();
             sD->stato = 4;
             if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1){
-                errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4");
+                errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4\n");
             }
             activePlayerIndex = 1; //Resettiamo come player attivo il primo player ( potrebbero cambiare di posizione)
 
-            //
+            printf("Sblocco il semaforo mutex per il set della memoria condivisa player1\n");
             s_signal(semID, SEM_MUTEX);
-            printf("Sbloccato il mutex\n");
             //Attende che si connetta un ulteriore giocatore
+            printf("Attesa del secondo giocatore\n");
             s_wait(semID, SEM_SERVER);
             printf("LIBERO\n");
             //Libero il semaforo del primoPlayer
@@ -198,7 +200,9 @@ int main(int argC, char * argV[]){
     int win;
     do{
         //Attende fino a che activePlayer non ha eseguito la sua mossa
+        printf("Attesa nel ciclo do-while\n");
         s_wait(semID, SEM_SERVER);
+        printf("Fine attesa nel do-while\n");
 
         //Resetta l'alarm precedente, se presente
         alarm(0);

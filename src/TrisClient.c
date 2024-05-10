@@ -81,7 +81,7 @@ void sigUser1Handler(int sig){
             break;
         
         case 4: //L'altro giocatore si è disconnesso
-            system("clear");
+            //system("clear");
             s_wait(semID, SEM_MUTEX);
 
             printf("%s si è disconnesso\nHai vinto a tavolino!\n",sD->playerName[getOtherPlayerIndex(playerIndex) - 1]);
@@ -89,7 +89,7 @@ void sigUser1Handler(int sig){
             char c;
             scanf("%c", &c);
             while(c != 'S' && c != 'N'){
-                system("clear");
+                //system("clear");
                 printf("\nDesideri giocare ancora? [S, N]:\n");
             }
 
@@ -124,7 +124,7 @@ void sigUser1Handler(int sig){
         nel processo giocatore, la ricezione di tale segnale rappresenta la chiusura del server
 */
 void sigUser2Handler(int sig){
-    system("clear");
+    //system("clear");
     errExit("Il processo Server è stato terminato\n");
 }
 
@@ -223,8 +223,9 @@ int main(int argC, char * argV[]) {
      *      da un semaforo MUTEX. 
      *      Un solo processo alla volta può modificare la memoria condivisa.
     ************************************/
+   printf("Attesa del semaforo mutex per inizializzazione memoria condivisa\n");
     s_wait(semID, SEM_MUTEX);
-    printf("MUTEX SUPERATO\n");
+    printf("MUTEX SUPERATO, inizio INIZIALIZZAZIONE MEMORIA CONDIVISA\n");
         //Se sono già presenti due giocatori
         if(sD->activePlayer >= 2){                               
             printf("E' già stato raggiunto il numero massimo di giocatori\n");
@@ -233,6 +234,7 @@ int main(int argC, char * argV[]) {
         }
         sD->activePlayer++;                                     //Incremento il numero di giocatoriAttivi
         playerIndex = sD->activePlayer;                         //Salvo, nella variabile playerIndex l'indice del giocatore
+        printf("PlayerIndex = %d\n", playerIndex);
         strcpy(sD->playerName[playerIndex - 1], argV[1]);       //Copio nella memoria condivisa il nome del giocatore, passato come parameteo
         sD->pids[playerIndex] = getpid();                       //Inserisco nell'array pids il pid del giocatore
         
@@ -301,7 +303,7 @@ int getPlayIndex(){
 }
 
 void printBoard(){
-    system("clear");
+    //system("clear");
     for (int i = 0; i < BOARD_SIZE; i++){
         printf(" %c ", sD->board[i]);
         //Se sono nella cella più a DX
@@ -332,7 +334,7 @@ sharedData * getSharedMemoryPointer(int shmid){
     Tale funzione, in quanto accede alla memoria condivisa, dovrà essere racchiusa in un semaforo mutex
 */
 void comunicaDisconnessione(){
-    system("clear");
+    //system("clear");
     sD->activePlayer--;
     //Avviso il server che entrambi abbiamo abbandonato
     if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
