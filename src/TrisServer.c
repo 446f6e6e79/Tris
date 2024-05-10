@@ -91,8 +91,8 @@ void sigUsr1Handler(int sig){
             s_signal(semID, SEM_MUTEX);
             //Attende che si connetta un ulteriore giocatore
             printf("Attesa del secondo giocatore\n");
-            s_wait(semID, SEM_SERVER);
-            printf("LIBERO\n");
+            s_wait(semID, SEM_INIZIALIZZAZIONE);
+            printf("LIBERO GIOCATORE 1!\n");
             //Libero il semaforo del primoPlayer
             s_signal(semID, 1);
         }
@@ -171,7 +171,7 @@ int main(int argC, char * argV[]){
         errExit("Errore nella get del semaforo\n");
     }
 
-    unsigned short values[4] = {1, 0, 0, 0};
+    unsigned short values[5] = {1, 0, 0, 0, 0};
     union semun arg;
     arg.array = values;
     
@@ -186,7 +186,7 @@ int main(int argC, char * argV[]){
     /*
         Devo attendere che entrambi i processi siano collegati
     */
-    s_wait(semID, SEM_SERVER);
+    s_wait(semID, SEM_INIZIALIZZAZIONE);
 
     //Libero il semaforo del primoPlayer
     s_signal(semID, 1);

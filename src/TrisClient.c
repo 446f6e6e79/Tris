@@ -82,15 +82,18 @@ void sigUser1Handler(int sig){
         
         case 4: //L'altro giocatore si è disconnesso
             //system("clear");
+            printf("Restart: Attesa semaforo memoria condivisa\n");
             s_wait(semID, SEM_MUTEX);
-
+            printf("Restart: Ottenuto semaforo mutex\n");
             printf("%s si è disconnesso\nHai vinto a tavolino!\n",sD->playerName[getOtherPlayerIndex(playerIndex) - 1]);
             printf("\nDesideri giocare ancora? [S, N]:\n");
             char c;
+            //Clean buffer
             scanf("%c", &c);
             while(c != 'S' && c != 'N'){
-                //system("clear");
+                system("clear");
                 printf("\nDesideri giocare ancora? [S, N]:\n");
+                scanf("%c", &c);
             }
 
             if(c == 'S'){
@@ -98,15 +101,16 @@ void sigUser1Handler(int sig){
                 if(playerIndex != 1){
                     playerIndex = 1;
                     strcpy(sD->playerName[playerIndex - 1], sD->playerName[1]);
-                    sD->pids[playerIndex] = getpid();
-                    s_signal(semID, SEM_MUTEX);
-                    printf("Sbloccato il mutex\n"); 
+                    sD->pids[playerIndex] = getpid(); 
                 }
                 //Altrimenti l'area di memoria è già correttamente settata
                 //system("clear");
+                s_signal(semID, SEM_MUTEX);
+                printf("Sbloccato il mutex\n");
                 printf("In attesa dell'altro giocatore\n");
                 //Attendo che si connetta il secondo giocatore
-                s_wait(semID, SEM_SERVER);
+                s_wait(semID, SEM_INIZIALIZZAZIONE);
+                printf("Finito attesa\n");
                 //TO DO: AVVIO UN ALTRA PARTITA
             }
             //Caso in cui non voglio più giocare
@@ -223,7 +227,7 @@ int main(int argC, char * argV[]) {
      *      da un semaforo MUTEX. 
      *      Un solo processo alla volta può modificare la memoria condivisa.
     ************************************/
-   printf("Attesa del semaforo mutex per inizializzazione memoria condivisa\n");
+    printf("Attesa del semaforo mutex per inizializzazione memoria condivisa\n");
     s_wait(semID, SEM_MUTEX);
     printf("MUTEX SUPERATO, inizio INIZIALIZZAZIONE MEMORIA CONDIVISA\n");
         //Se sono già presenti due giocatori
@@ -240,7 +244,7 @@ int main(int argC, char * argV[]) {
         
         //Se sono il secondo giocatore, sblocco tutti i processi in attesa
         if(playerIndex == 2){                                    
-            semOp(semID, SEM_SERVER, +3);
+            semOp(semID, SEM_INIZIALIZZAZIONE, +3);
             printf("Sbloccati i 3 processi in attesa\n");
         }
         //Altrimenti sto in attesa dell'arrivo del secondo player
@@ -252,7 +256,7 @@ int main(int argC, char * argV[]) {
     s_signal(semID, SEM_MUTEX);
 
     //Rimango in attesa, fino a che entrambi i giocatori sono attivi
-    s_wait(semID, SEM_SERVER);
+    s_wait(semID, SEM_INIZIALIZZAZIONE);
 
     /***********************************
      *      INIZIO DEL GIOCO
@@ -266,7 +270,9 @@ int main(int argC, char * argV[]) {
             Giocatore rimane in attesa sul proprio semaforo.
             Dovrà attendere che l'altro giocatore esegua la mossa, per essere sbloccato
         */
+        printf("In attesa sul mio semaforo\n");
         s_wait(semID, playerIndex);
+        printf("E' il mio turno\n");
 
         printBoard();
         
@@ -274,6 +280,7 @@ int main(int argC, char * argV[]) {
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
         //Avvisa il processo Server, che una mossa è stata eseguita
+        printf("Sblocco il server\n");
         s_signal(semID, SEM_SERVER);
     }while(1);
 }
