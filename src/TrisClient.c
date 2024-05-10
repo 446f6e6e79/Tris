@@ -95,12 +95,12 @@ void sigUser1Handler(int sig){
             }
 
             if(c == 'S'){
-                //Resetto l'area di memoria condivisa, mettendomi come giocatore1
-                if(playerIndex != 1){
-                    playerIndex = 1;
-                    strcpy(sD->playerName[playerIndex - 1], sD->playerName[1]);
-                    sD->pids[playerIndex] = getpid(); 
+                char* name = sD->playerName[playerIndex];
+                if (execl("./bin/TrisClient", "TrisClient", name , NULL) == -1) {
+                    perror("Errore durante l'esecuzione di execl");
+                    exit(EXIT_FAILURE);
                 }
+<<<<<<< Updated upstream
                 /* Altrimenti l'area di memoria è già correttamente settata.
                     A questo punto sblococ il semaforo MUTEX per il prossimo player */
                 s_signal(semID, SEM_MUTEX);
@@ -108,6 +108,8 @@ void sigUser1Handler(int sig){
                 printf("In attesa dell'altro giocatore\n");
                 //Attendo che si connetta il secondo giocatore
                 s_wait(semID, SEM_INIT);
+=======
+>>>>>>> Stashed changes
             }
             //Caso in cui non voglio più giocare
             else{
@@ -174,7 +176,7 @@ void sigAlarmHandler(int sig){
     INIZIO MAIN
 ************************/
 int main(int argC, char * argV[]) {
-
+    system("clear");
     int otherPlayerIndex;
     if (signal(SIGALRM, sigAlarmHandler) == SIG_ERR) {
             errExit("change signal handler failed");

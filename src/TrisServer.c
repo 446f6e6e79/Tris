@@ -83,6 +83,7 @@ void sigUsr1Handler(int sig){
             if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1){
                 errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4");
             }
+<<<<<<< Updated upstream
             activePlayerIndex = 1; //Resettiamo come player attivo il primo player ( potrebbero cambiare di posizione)
 
             //
@@ -93,6 +94,11 @@ void sigUsr1Handler(int sig){
             printf("LIBERO\n");
             //Libero il semaforo del primoPlayer
             s_signal(semID, 1);
+=======
+            s_signal(semID, SEM_MUTEX);
+            execl("./bin/TrisServer", "TrisServer", "10", "x", "o",  NULL);
+            errExit("Errore nella exec\n");
+>>>>>>> Stashed changes
         }
         else{
             printf("Entrambi i giocatori hanno abbandonato la partita\n");
@@ -106,7 +112,7 @@ void sigUsr1Handler(int sig){
     INIZIO MAIN
 */
 int main(int argC, char * argV[]){
-
+    system("clear");
     //Setto il nuvo comportamento dei segnali
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGINT Handler");
