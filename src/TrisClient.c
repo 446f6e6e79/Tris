@@ -91,6 +91,7 @@ void sigUser1Handler(int sig){
             while(c != 'S' && c != 'N'){
                 system("clear");
                 printf("\nDesideri giocare ancora? [S, N]:\n");
+                scanf("%c", &c);
             }
 
             if(c == 'S'){
@@ -106,8 +107,7 @@ void sigUser1Handler(int sig){
                 system("clear");
                 printf("In attesa dell'altro giocatore\n");
                 //Attendo che si connetta il secondo giocatore
-                s_wait(semID, SEM_SERVER);
-                //TO DO: AVVIO UN ALTRA PARTITA
+                s_wait(semID, SEM_INIT);
             }
             //Caso in cui non voglio più giocare
             else{
@@ -238,7 +238,7 @@ int main(int argC, char * argV[]) {
         
         //Se sono il secondo giocatore, sblocco tutti i processi in attesa
         if(playerIndex == 2){                                    
-            semOp(semID, SEM_SERVER, +3);
+            semOp(semID, SEM_INIT, +3);
             printf("Sbloccati i 3 processi in attesa\n");
         }
         //Altrimenti sto in attesa dell'arrivo del secondo player
@@ -250,7 +250,7 @@ int main(int argC, char * argV[]) {
     s_signal(semID, SEM_MUTEX);
 
     //Rimango in attesa, fino a che entrambi i giocatori sono attivi
-    s_wait(semID, SEM_SERVER);
+    s_wait(semID, SEM_INIT);
 
     /***********************************
      *      INIZIO DEL GIOCO

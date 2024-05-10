@@ -6,7 +6,7 @@
 
 //DEFINIZIONE DELLE LUNGHEZZE
 #define BOARD_SIZE 9
-#define NUM_SEM 4
+#define NUM_SEM 5
 #define NUM_PROCESSES 3
 #define STR_LEN 65
 
@@ -15,6 +15,7 @@
 #define SEM_KEY 70
 
 //DEFINIZIONE DELLE LUNGHEZZE DEL SEMAFORO
+#define SEM_INIT 4
 #define SEM_SERVER 3
 #define SEM_MUTEX 0
 

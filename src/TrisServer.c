@@ -89,7 +89,7 @@ void sigUsr1Handler(int sig){
             s_signal(semID, SEM_MUTEX);
             printf("Sbloccato il mutex\n");
             //Attende che si connetta un ulteriore giocatore
-            s_wait(semID, SEM_SERVER);
+            s_wait(semID, SEM_INIT);
             printf("LIBERO\n");
             //Libero il semaforo del primoPlayer
             s_signal(semID, 1);
@@ -184,7 +184,7 @@ int main(int argC, char * argV[]){
     /*
         Devo attendere che entrambi i processi siano collegati
     */
-    s_wait(semID, SEM_SERVER);
+    s_wait(semID, SEM_INIT);
 
     //Libero il semaforo del primoPlayer
     s_signal(semID, 1);
