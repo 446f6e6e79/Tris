@@ -98,12 +98,12 @@ void sigUser1Handler(int sig){
                 if(playerIndex != 1){
                     playerIndex = 1;
                     strcpy(sD->playerName[playerIndex - 1], sD->playerName[1]);
-                    sD->pids[playerIndex] = getpid();
-                    s_signal(semID, SEM_MUTEX);
-                    printf("Sbloccato il mutex\n"); 
+                    sD->pids[playerIndex] = getpid(); 
                 }
-                //Altrimenti l'area di memoria è già correttamente settata
-                //system("clear");
+                /* Altrimenti l'area di memoria è già correttamente settata.
+                    A questo punto sblococ il semaforo MUTEX per il prossimo player */
+                s_signal(semID, SEM_MUTEX);
+                system("clear");
                 printf("In attesa dell'altro giocatore\n");
                 //Attendo che si connetta il secondo giocatore
                 s_wait(semID, SEM_SERVER);
