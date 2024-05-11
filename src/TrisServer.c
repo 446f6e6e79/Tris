@@ -91,8 +91,6 @@ void sigUsr1Handler(int sig){
             //Attende che si connetta un ulteriore giocatore
             s_wait(semID, SEM_INIT);
             printf("LIBERO\n");
-            //Libero il semaforo del primoPlayer
-            s_signal(semID, 1);
         }
         else{
             printf("Entrambi i giocatori hanno abbandonato la partita\n");

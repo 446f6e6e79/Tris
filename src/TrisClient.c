@@ -108,12 +108,14 @@ void sigUser1Handler(int sig){
                 printf("In attesa dell'altro giocatore\n");
                 //Attendo che si connetta il secondo giocatore
                 s_wait(semID, SEM_INIT);
+                printBoard();
+                printf("Inserisci coordinate posizione (x y)\n");
             }
             //Caso in cui non voglio più giocare
             else{
                 sD->activePlayer--;
                 comunicaDisconnessione();
-                s_signal(semID, SEM_MUTEX);
+                s_signal(semID, SEM_INIT);
                 terminazioneSicura();
             }
             break;
@@ -175,7 +177,6 @@ void sigAlarmHandler(int sig){
 ************************/
 int main(int argC, char * argV[]) {
 
-    int otherPlayerIndex;
     if (signal(SIGALRM, sigAlarmHandler) == SIG_ERR) {
             errExit("change signal handler failed");
     }
@@ -255,10 +256,9 @@ int main(int argC, char * argV[]) {
     /***********************************
      *      INIZIO DEL GIOCO
     ************************************/
-    otherPlayerIndex = getOtherPlayerIndex(playerIndex);
     do{    
         printBoard();
-        printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
+        printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
         
         /*
             Giocatore rimane in attesa sul proprio semaforo.
