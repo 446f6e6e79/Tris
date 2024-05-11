@@ -12,6 +12,7 @@
 #include <sys/shm.h>
 #include <signal.h> 
 #include <string.h>
+#include <fcntl.h>
 #include "errExit.h"
 #include "semaphore.h"
 #include "utils.h"
@@ -177,8 +178,19 @@ void sigAlarmHandler(int sig){
 /***********************
     INIZIO MAIN
 ************************/
-int main(int argC, char * argV[]) {
+void cleanBuffer() {
+    int flags = fcntl(fileno(stdin), F_GETFL, 0); // Get the current flags
+    fcntl(fileno(stdin), F_SETFL, flags | O_NONBLOCK); // Set non-blocking mode
 
+    // Consume characters until reaching the newline or EOF
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF) {}
+
+    fcntl(fileno(stdin), F_SETFL, flags); // Restore the original flags
+}
+
+int main(int argC, char * argV[]) {
+    cleanBuffer();
     int otherPlayerIndex;
     if (signal(SIGALRM, sigAlarmHandler) == SIG_ERR) {
             errExit("change signal handler failed");
@@ -293,6 +305,7 @@ void terminazioneSicura(){
 
 //Acquisisce in input i dati della mossa, attuandone un controllo su di esse
 int getPlayIndex(){
+    cleanBuffer();
     int x,y, index;
     do{
         printf("Inserisci coordinate posizione (x y)\n");
