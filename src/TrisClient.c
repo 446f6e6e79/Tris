@@ -75,8 +75,7 @@ void sigUser1Handler(int sig){
             //Mi metto in attesa e passo il turno attraverso il server
             s_signal(semID, SEM_SERVER);
             s_wait(semID, playerIndex);
-         
-
+            
             printBoard();
             printf("Inserisci coordinate posizione (x y)\n");
             break;
@@ -112,13 +111,14 @@ void sigUser1Handler(int sig){
                 //Attendo che si connetta il secondo giocatore
                 s_wait(semID, SEM_INIZIALIZZAZIONE);
                 printf("Finito attesa\n");
-                //TO DO: AVVIO UN ALTRA PARTITA
+                printBoard();
+                printf("Inserisci coordinate posizione (x y)\n");
             }
             //Caso in cui non voglio più giocare
             else{
                 sD->activePlayer--;
                 comunicaDisconnessione();
-                s_signal(semID, SEM_MUTEX);
+                s_signal(semID, SEM_INIZIALIZZAZIONE);
                 terminazioneSicura();
             }
             break;
@@ -191,7 +191,6 @@ void cleanBuffer() {
 
 int main(int argC, char * argV[]) {
     cleanBuffer();
-    int otherPlayerIndex;
     if (signal(SIGALRM, sigAlarmHandler) == SIG_ERR) {
             errExit("change signal handler failed");
     }
@@ -273,10 +272,10 @@ int main(int argC, char * argV[]) {
     /***********************************
      *      INIZIO DEL GIOCO
     ************************************/
-    otherPlayerIndex = getOtherPlayerIndex(playerIndex);
-    do{    
+    do{
         printBoard();
-        printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[otherPlayerIndex - 1]); 
+        printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]);
+        printf("MIO INDEX: %d\nOTHER INDEX:%d\n", playerIndex, getOtherPlayerIndex(playerIndex)); 
         
         /*
             Giocatore rimane in attesa sul proprio semaforo.
@@ -310,13 +309,14 @@ int getPlayIndex(){
     do{
         printf("Inserisci coordinate posizione (x y)\n");
         scanf("%d %d", &x, &y);
+        printf("Coordinate inserite\n");
         index = (3 * (y - 1)) + x - 1;
         if((x >= 1 && x <= 3) && 
             (y >= 1 && y <= 3) &&
             sD->board[index] == ' '){
             return index;
         }
-        
+
         printf("Input non valido!\n");
     }
     while(1);

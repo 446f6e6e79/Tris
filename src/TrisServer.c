@@ -94,7 +94,6 @@ void sigUsr1Handler(int sig){
             s_wait(semID, SEM_INIZIALIZZAZIONE);
             printf("LIBERO GIOCATORE 1!\n");
             //Libero il semaforo del primoPlayer
-            s_signal(semID, 1);
         }
         else{
             printf("Entrambi i giocatori hanno abbandonato la partita\n");
@@ -224,6 +223,7 @@ int main(int argC, char * argV[]){
         //Riavvio il timer per la mossa successiva
         alarm(timeOut);
         //Sblocca il giocatore Successivo
+        printf("Sbloccato il giocatore%d\n", activePlayerIndex);
         s_signal(semID, activePlayerIndex);
     }while(1);
 
