@@ -27,3 +27,10 @@ int sharedMemoryAttach(){
     }
     return shmid;
 }
+
+char* charToString(char c) {
+    static char str[2]; // Stringa di lunghezza 2 (1 carattere + terminatore null)
+    str[0] = c; // Assegna il carattere alla stringa
+    str[1] = '\0'; // Aggiunge il terminatore null
+    return str;
+}

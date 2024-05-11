@@ -57,12 +57,60 @@ void sigUser1Handler(int sig){
             if(sD->stato == playerIndex){
                 printBoard();
                 printf("\nComplimenti! Hai vinto!\n");
+                //Richiedo al vincitore se ha intenzione di rigiocare
+                //POSSIBILE NECESSITA' DI CLEAN BUFFER
+                char c;
+                do{
+                    printf("\nDesideri giocare ancora? [S, N]:\n");
+                    scanf("%c", &c);
+                }while(c != 'S' && c != 'N');
+                if(c == 'S'){
+                    char* name = sD->playerName[playerIndex];
+
+                    //Chiusura memoria condivisa con attach
+                    //Chiusura e terminazione forzata bloccano la exec
+                    //shmdt((void *) sD);
+                
+                    //Avverto l'altro player di aver deciso 
+                    s_signal(semID, SEM_INIT);
+                    //Mi sblocco il semaforo per partire per primo
+                    s_signal(semID, playerIndex);
+                    //Se ha intenzione di rigiocare riavvia l'intero programma
+                    sD->activePlayer= 0;
+                    if (execl("./bin/TrisClient", "TrisClient", name , NULL) == -1) {
+                        errExit("Errore durante l'esecuzione di execl");
+                    }  
+                }else{
+                    //Nel caso di non voler più giocare decremento i player attivi e concludo il processo
+                    sD->activePlayer--;
+                    //Avverto l'altro player del responso
+                    s_signal(semID, SEM_INIT);
+                    terminazioneSicura();
+                }
             }
             else{
                 printBoard();
                 printf("\nHai Perso!\n");
+                printf("In attesa della risposta dell'altro giocatore\n");
+                s_wait(semID,SEM_INIT);
+                
+                //Prendo il nome (ERRATO PER IL MOMENTO)
+                char* name = sD->playerName[playerIndex];
+                if(sD->activePlayer == 0){//Se i activePlayer è nullo significa che è stato inizializzato per un nuovo rematch
+                    //Riavvio il processo
+                    if (execl("./bin/TrisClient", "TrisClient", name , NULL) == -1) {
+                        errExit("Errore durante l'esecuzione di execl");
+                    }
+                }else{
+                    //Altrimenti significa che l'altro processo si è disconnesso e devo disconnettermi pure io
+                    sD->activePlayer--;
+                    //Essendo l'ultimo processo a disconettersi, comunico io la disconnesione
+                    //Indifferente chi lo faccia
+                    comunicaDisconnessione();
+                    terminazioneSicura();
+                }
             }
-            terminazioneSicura();
+            
             break;
         
         case 3: //Fine TIME-OUT
@@ -96,26 +144,18 @@ void sigUser1Handler(int sig){
 
             if(c == 'S'){
                 char* name = sD->playerName[playerIndex];
+                //Chiusura memoria condivisa con attach
+                //shmdt((void *) sD);
+                s_signal(semID, SEM_INIT);
                 if (execl("./bin/TrisClient", "TrisClient", name , NULL) == -1) {
-                    perror("Errore durante l'esecuzione di execl");
-                    exit(EXIT_FAILURE);
+                    errExit("Errore durante l'esecuzione di execl");
                 }
-<<<<<<< Updated upstream
-                /* Altrimenti l'area di memoria è già correttamente settata.
-                    A questo punto sblococ il semaforo MUTEX per il prossimo player */
-                s_signal(semID, SEM_MUTEX);
-                system("clear");
-                printf("In attesa dell'altro giocatore\n");
-                //Attendo che si connetta il secondo giocatore
-                s_wait(semID, SEM_INIT);
-=======
->>>>>>> Stashed changes
             }
             //Caso in cui non voglio più giocare
             else{
                 sD->activePlayer--;
                 comunicaDisconnessione();
-                s_signal(semID, SEM_MUTEX);
+                s_signal(semID, SEM_INIT);
                 terminazioneSicura();
             }
             break;

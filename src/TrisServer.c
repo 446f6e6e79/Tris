@@ -24,16 +24,17 @@ sharedData * sD;
 int shmid;
 int semID;
 int activePlayerIndex = 1;
-
+char* strTimeout;
 //Definizione prototipi
 void firstSigIntHandler(int);
 void secondSigIntHandler(int);
 void sigAlarmHandler(int);
 
 void terminazioneSicura();
+void restart();
 
 void initializeEmptyBoard();
-int checKVerticalWin();
+int checkVerticalWin();
 int checkHorizontalWin();
 int checkDiagonalWin();
 int checkFull();
@@ -72,6 +73,7 @@ void sigAlarmHandler(int sig){
 /* Handler che gestisce il caso: uno dei due processi si è disconnesso*/
 void sigUsr1Handler(int sig){
     //Controllo quanti giocatori sono rimasti:
+   
     s_wait(semID, SEM_MUTEX);
         //C'è ancora un giocatore attivo, invio il segnale comunicando la sua vittoria
         if(sD->activePlayer == 1){
@@ -83,28 +85,25 @@ void sigUsr1Handler(int sig){
             if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1){
                 errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4");
             }
-<<<<<<< Updated upstream
-            activePlayerIndex = 1; //Resettiamo come player attivo il primo player ( potrebbero cambiare di posizione)
-
-            //
             s_signal(semID, SEM_MUTEX);
-            printf("Sbloccato il mutex\n");
-            //Attende che si connetta un ulteriore giocatore
-            s_wait(semID, SEM_INIT);
-            printf("LIBERO\n");
-            //Libero il semaforo del primoPlayer
-            s_signal(semID, 1);
-=======
-            s_signal(semID, SEM_MUTEX);
-            execl("./bin/TrisServer", "TrisServer", "10", "x", "o",  NULL);
-            errExit("Errore nella exec\n");
->>>>>>> Stashed changes
+            s_wait(semID,SEM_INIT);
+            if(sD->activePlayer == 1){
+                //Se il player rimasto desidera rigiocare riavvio sia il server che l'altro giocatore
+                restart();
+            }else{
+                //Altrimenti concludo il processo
+               printf("Entrambi i giocatori hanno abbandonato la partita\n");
+               terminazioneSicura();
+               exit(0);    
+            }
+            
         }
         else{
             printf("Entrambi i giocatori hanno abbandonato la partita\n");
             terminazioneSicura();
             exit(0);            
         }
+
 }
 
 
@@ -113,6 +112,7 @@ void sigUsr1Handler(int sig){
 */
 int main(int argC, char * argV[]){
     system("clear");
+    printf("%s %s %s\n", argV[1], argV[2], argV[3]);
     //Setto il nuvo comportamento dei segnali
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGINT Handler");
@@ -126,9 +126,11 @@ int main(int argC, char * argV[]){
         printf("Usage: %s <timeout> <SimboloPlayer1> <SimboloPlayer2>\n", argV[0]);
         return 1;
     }
-    
-    int timeOut;
+
+    //Salvo il timeout in una stringa in maniera tale da poter riutilizzarlo come parametro in caso di rematch
+    strTimeout = argV[1];
     //Converto il valore di timeout in un intero
+    int timeOut;
     timeOut = atoi(argV[1]);
     if(timeOut < 0){
         errExit("TimeOut >= 0");
@@ -215,10 +217,12 @@ int main(int argC, char * argV[]){
             //Setto stato a vittoria
             sD -> stato = win;
             //Avviso i client
+            //Inizializzo già per un possibile rematch
             if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
                 terminazioneSicura();
                 errExit("Errore nell'invio del segnale al client");
             }
+            restart();
         }
        
         //Aggiorna activePlayerIndex
@@ -332,5 +336,14 @@ int checkResult(){
 void initializeEmptyBoard(){
     for(int i = 0; i < BOARD_SIZE; i++){
         sD -> board[i] = ' ';
+    }
+}
+
+void restart(){
+    char* playerKey1 = charToString(sD->player[0]);
+    char* playerKey2 = charToString(sD->player[1]);
+    terminazioneSicura();
+    if(execl("./bin/TrisServer", "TrisServer", strTimeout, playerKey1, playerKey2,  NULL) == -1){
+        errExit("Errore nella exec del server\n");
     }
 }

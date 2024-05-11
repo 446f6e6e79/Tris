@@ -44,5 +44,6 @@ union semun {
 int getOtherPlayerIndex(int);
 int getSemaforeID();
 int sharedMemoryAttach();
+char* charToString(char);
 
 #endif
