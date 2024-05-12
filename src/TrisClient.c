@@ -316,7 +316,7 @@ int getPlayIndex(){
             }
         }
         else{
-            printf("ERRORE PARSING\n");
+            printf("ERRORE PARSING: string letta %s\n", input);
         }
         
 
