@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <signal.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
 #include <sys/shm.h>
@@ -16,7 +17,6 @@
 #include "semaphore.h"
 #include "utils.h"
 
-
 // Definizione variabili globali
 int shmid;
 sharedData *sD;
@@ -25,11 +25,40 @@ int semID;
 
 void getBotPlay();
 void terminazioneSicura();
+void sigUser1Handler(int sig);
+
+void sigUser1Handler(int sig){
+    //Si gestiscono solo i casi di vittoria
+    if(sD->stato == 1){
+        //Attendo la decisione del player vincitore
+        s_wait(semID, playerIndex);
+        //Nel caso si fosse scollegato chiudo pure io
+        if(sD->activePlayer == 0){
+            terminazioneSicura();
+        }
+        //Passo ulteriormente il turno al server che a questo punto mi darà la possibilità di giocare
+        s_signal(semID, SEM_SERVER);
+    }else if(sD->stato == 2){
+        //Passo il turno al player sconfitto, in maniera tale da fargli decidere se rigiocare o mneo
+        s_signal(semID,getOtherPlayerIndex(playerIndex));
+        //Attendo il suo responso
+        s_wait(semID, playerIndex);
+        //Verifico se si è scollegato o meno
+        if(sD->activePlayer == 0){
+            terminazioneSicura();
+        }
+        //Passo ulteriormente il turno al server che a questo punto mi darà la possibilità di giocare
+        s_signal(semID, SEM_SERVER);
+    }
+}
 
 int main() {
     //Inizializzo il random
     srand(time(NULL));
 
+    if (signal(SIGUSR1, sigUser1Handler) == SIG_ERR) {
+        errExit("Errore nel USR1 Handler");
+    }
     // Inizializzazione dei semafori
     semID = semget(SEM_KEY, NUM_SEM, IPC_CREAT | 0666);
     if (semID == -1) {
@@ -52,11 +81,11 @@ int main() {
     playerIndex = 2;
     strcpy(sD->playerName[playerIndex - 1], "Computer");
     sD->pids[playerIndex] = getpid();
-    semOp(semID, SEM_SERVER, +3);
+    semOp(semID, SEM_INIZIALIZZAZIONE, +3);
     s_signal(semID, 0);
 
     // Attendo che entrambi i giocatori siano attivi
-    s_wait(semID, SEM_SERVER);
+    s_wait(semID, SEM_INIZIALIZZAZIONE);
     sD->activePlayer++;
 
     // Inizio del gioco
@@ -68,7 +97,6 @@ int main() {
         s_signal(semID, SEM_SERVER);
     } while (1);
 
-    terminazioneSicura();
 }
 
 void terminazioneSicura(){

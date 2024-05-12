@@ -24,7 +24,7 @@
 int shmid;
 sharedData *sD;
 int playerIndex;
-
+int bot=0; //Flag che indica la presenza o meno del bot
 int semID;
 
 //Definizione prototipi
@@ -55,15 +55,73 @@ void sigUser1Handler(int sig){
             break;
         case 1://Nella partita avviene una vittoria
         case 2:
+            
+
             if(sD->stato == playerIndex){
                 printBoard();
                 printf("\nComplimenti! Hai vinto!\n");
-            }
+                printf("\nDesideri giocare ancora? [S, N]:\n");
+                //Clean buffer
+                cleanBuffer();
+                //Chiedo al vincitore se ha intenzione di rigiocare
+                char c;
+                scanf("%c", &c);
+                while(c != 'S' && c != 'N'){
+                    system("clear");
+                    printf("\nDesideri giocare ancora? [S, N]:\n");
+                    scanf("%c", &c);
+                }
+                if(c=='S'){
+                    //Nel caso il giocatore voglia rigiocare basta svegliare sia il server che il giocatore
+                    s_signal(semID,getOtherPlayerIndex(playerIndex));//Avviso l'altro player di voler rigiocare
+                    s_signal(semID, SEM_SERVER);//Avviso il server di inizializzare la tavola
+                    system("clear");
+                    printBoard();
+                    printf("In attesa del giocatore sconfitto\n");//Così facendo il turno d'inizio passerà al player che ha perso
+                }else{
+                    //Nel caso mi volessi disconnettere chiudo il processo e decremento i processi attivi
+                    sD->activePlayer--;
+                    comunicaDisconnessione();
+                    terminazioneSicura();
+                }
+                
+            }   
             else{
                 printBoard();
                 printf("\nHai Perso!\n");
+                //Attendo la decisione del player vincitore
+                s_wait(semID, playerIndex);
+                //Nel caso si fosse scollegato chiudo pure io
+                if(sD->activePlayer == 0){
+                    terminazioneSicura();
+                }
+                //Verifico il caso di partita col computer
+                if(bot==1){
+                    //Anche se perdo col computer viene chiesta al player la possibilità di giocare
+                    printf("\nDesideri giocare ancora? [S, N]:\n");
+                    //Clean buffer
+                    cleanBuffer();
+                    //Chiedo al vincitore se ha intenzione di rigiocare
+                    char c;
+                    scanf("%c", &c);
+                    while(c != 'S' && c != 'N'){
+                        system("clear");
+                        printf("\nDesideri giocare ancora? [S, N]:\n");
+                        scanf("%c", &c);
+                    
+                    }
+                    if(c == 'N'){
+
+                        comunicaDisconnessione();
+                        terminazioneSicura();
+                    }else{
+                        //Nel caso il giocatore voglia rigiocare
+                        s_signal(semID,getOtherPlayerIndex(playerIndex));//Avviso l'altro player di voler rigiocare
+                    }
+                }
+                //Passo il turno al server che gestirà il match
+                s_signal(semID, SEM_SERVER);
             }
-            terminazioneSicura();
             break;
         
         case 3: //Fine TIME-OUT
@@ -206,6 +264,7 @@ int main(int argC, char * argV[]) {
     //Selezionato di giocare contro il BOT
     if(argC == 3 && argV[2][0] == '*'){
         //Creo un processo figlio, eseguirà TrisBot
+        bot = 1;
         pid_t pid = fork();
         if(pid == 0){
             execl("./bin/TrisBot", "TrisBot", NULL);
@@ -327,6 +386,7 @@ int getPlayIndex(){
 
 void printBoard(){
     //system("clear");
+    printf("\n");
     for (int i = 0; i < BOARD_SIZE; i++){
         printf(" %c ", sD->board[i]);
         //Se sono nella cella più a DX

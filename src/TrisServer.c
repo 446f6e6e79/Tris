@@ -82,7 +82,7 @@ void sigUsr1Handler(int sig){
             //Svuoto l'area di gioco
             initializeEmptyBoard();
             sD->stato = 4;
-
+            //Se il player a chiudersi è il player attivo, ai fini di evitare il deadlock svegli il processo in attesa
             if(activePlayerIndex == sD->indexPlayerLefted ){
                 s_signal(semID, getOtherPlayerIndex(sD->indexPlayerLefted) );
                 printf("HO SVEGLIATO IL MATTO\n");
@@ -224,15 +224,21 @@ int main(int argC, char * argV[]){
                 terminazioneSicura();
                 errExit("Errore nell'invio del segnale al client");
             }
+            //Attendo il responso del vincitore ( se volesse chiudere verrà comunicato e avvia la signal)
+            s_wait(semID, SEM_SERVER);
+            //Pulisco il tavolo da gioco e di conseguenza passo il turno al player perdente alla prossima signal
+            initializeEmptyBoard();
         }
-       
-        //Aggiorna activePlayerIndex
-        activePlayerIndex = getOtherPlayerIndex(activePlayerIndex);
-        //Riavvio il timer per la mossa successiva
-        alarm(timeOut);
-        //Sblocca il giocatore Successivo
-        printf("Sbloccato il giocatore%d\n", activePlayerIndex);
-        s_signal(semID, activePlayerIndex);
+        else{
+            //Aggiorna activePlayerIndex
+            activePlayerIndex = getOtherPlayerIndex(activePlayerIndex);
+            //Riavvio il timer per la mossa successiva
+            alarm(timeOut);
+            //Sblocca il giocatore Successivo
+            printf("Sbloccato il giocatore%d\n", activePlayerIndex);
+            s_signal(semID, activePlayerIndex);
+        }
+        
     }while(1);
 
     terminazioneSicura();   
