@@ -82,9 +82,16 @@ void sigUsr1Handler(int sig){
             //Svuoto l'area di gioco
             initializeEmptyBoard();
             sD->stato = 4;
+
+            if(activePlayerIndex == sD->indexPlayerLefted ){
+                s_signal(semID, getOtherPlayerIndex(sD->indexPlayerLefted) );
+                printf("HO SVEGLIATO IL MATTO\n");
+            }
+            
             if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1){
                 errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4\n");
             }
+            
             activePlayerIndex = 1; //Resettiamo come player attivo il primo player ( potrebbero cambiare di posizione)
 
             printf("Sblocco il semaforo mutex per il set della memoria condivisa player1\n");
@@ -93,6 +100,7 @@ void sigUsr1Handler(int sig){
             printf("Attesa del secondo giocatore\n");
             s_wait(semID, SEM_INIZIALIZZAZIONE);
             printf("LIBERO GIOCATORE 1!\n");
+            
             //Libero il semaforo del primoPlayer
         }
         else{

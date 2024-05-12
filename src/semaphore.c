@@ -25,7 +25,7 @@ void semOp(int semid, unsigned short sem_num, short sem_op) {
     int result = semop(semid, &op, 1);
     //Questo controllo verifica che l'operazione(wait) non sia stata interrota da un segnale
     //e nel caso riprende il suo comportamento
-    while( result == -1 && errno == EINTR ){
+    if( result == -1 && errno == EINTR ){
         result = semop(semid, &op, 1);
     }
 }

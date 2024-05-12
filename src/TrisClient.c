@@ -33,7 +33,7 @@ void secondSigIntHandler(int sig);
 void sigAlarmHandler(int sig);
 void sigUser1Handler(int sig);
 void sigUser2Handler(int sig);
-
+void cleanBuffer();
 sharedData * getSharedMemoryPointer(int);
 void terminazioneSicura();
 void printBoard();
@@ -89,6 +89,7 @@ void sigUser1Handler(int sig){
             printf("\nDesideri giocare ancora? [S, N]:\n");
             char c;
             //Clean buffer
+            cleanBuffer();
             scanf("%c", &c);
             while(c != 'S' && c != 'N'){
                 system("clear");
@@ -97,6 +98,7 @@ void sigUser1Handler(int sig){
             }
 
             if(c == 'S'){
+                
                 //Resetto l'area di memoria condivisa, mettendomi come giocatore1
                 if(playerIndex != 1){
                     playerIndex = 1;
@@ -113,6 +115,8 @@ void sigUser1Handler(int sig){
                 printf("Finito attesa\n");
                 printBoard();
                 printf("Inserisci coordinate posizione (x y)\n");
+              
+
             }
             //Caso in cui non voglio più giocare
             else{
@@ -184,8 +188,9 @@ void cleanBuffer() {
 
     // Consume characters until reaching the newline or EOF
     int c;
+    printf("In pulizia\n");
     while ((c = getchar()) != '\n' && c != EOF) {}
-
+    printf("Finito pulizia\n");
     fcntl(fileno(stdin), F_SETFL, flags); // Restore the original flags
 }
 
@@ -304,13 +309,16 @@ void terminazioneSicura(){
 
 //Acquisisce in input i dati della mossa, attuandone un controllo su di esse
 int getPlayIndex(){
-    cleanBuffer();
     int x,y, index;
+    cleanBuffer();
+    
     do{
         printf("Inserisci coordinate posizione (x y)\n");
+
         scanf("%d %d", &x, &y);
         printf("Coordinate inserite\n");
         index = (3 * (y - 1)) + x - 1;
+
         if((x >= 1 && x <= 3) && 
             (y >= 1 && y <= 3) &&
             sD->board[index] == ' '){

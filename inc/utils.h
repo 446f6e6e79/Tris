@@ -27,7 +27,7 @@
 typedef struct SharedData{
     char player[2];                 //Simboli del player
     char playerName[2][STR_LEN];    //Nomi del player
-    int activePlayer;               //Index del player attivo attualmente
+    int activePlayer;               //Index del numero di player attivo attualmente
     char board[BOARD_SIZE];         //Tabella di gioco
     pid_t pids[NUM_PROCESSES];      //Array dei pid dei processi
     int stato;                      //Stato del gioco
