@@ -115,8 +115,8 @@ void sigUser1Handler(int sig){
                 printf("Finito attesa\n");
                 printBoard();
                 printf("Inserisci coordinate posizione (x y)\n");
+                cleanBuffer();
               
-
             }
             //Caso in cui non voglio più giocare
             else{
@@ -182,20 +182,7 @@ void sigAlarmHandler(int sig){
 /***********************
     INIZIO MAIN
 ************************/
-void cleanBuffer() {
-    int flags = fcntl(fileno(stdin), F_GETFL, 0); // Get the current flags
-    fcntl(fileno(stdin), F_SETFL, flags | O_NONBLOCK); // Set non-blocking mode
-
-    // Consume characters until reaching the newline or EOF
-    int c;
-    printf("In pulizia\n");
-    while ((c = getchar()) != '\n' && c != EOF) {}
-    printf("Finito pulizia\n");
-    fcntl(fileno(stdin), F_SETFL, flags); // Restore the original flags
-}
-
 int main(int argC, char * argV[]) {
-    cleanBuffer();
     if (signal(SIGALRM, sigAlarmHandler) == SIG_ERR) {
             errExit("change signal handler failed");
     }
@@ -310,20 +297,28 @@ void terminazioneSicura(){
 //Acquisisce in input i dati della mossa, attuandone un controllo su di esse
 int getPlayIndex(){
     int x,y, index;
-    cleanBuffer();
-    
     do{
-        printf("Inserisci coordinate posizione (x y)\n");
+        cleanBuffer();
+        printf("Inserisci le coordinate: (x y)\n");
 
-        scanf("%d %d", &x, &y);
-        printf("Coordinate inserite\n");
-        index = (3 * (y - 1)) + x - 1;
+        char input[100];
+        fgets(input, sizeof(input), stdin);
 
-        if((x >= 1 && x <= 3) && 
-            (y >= 1 && y <= 3) &&
-            sD->board[index] == ' '){
-            return index;
+        // Parse integers from the input string
+        if (sscanf(input, "%d %d", &x, &y) == 2) {
+            printf("Coordinate inserite: x = %d, y = %d\n", x, y);
+            index = (3 * (y - 1)) + x - 1;
+
+            if((x >= 1 && x <= 3) && 
+                (y >= 1 && y <= 3) &&
+                sD->board[index] == ' '){
+                return index;
+            }
         }
+        else{
+            printf("ERRORE PARSING\n");
+        }
+        
 
         printf("Input non valido!\n");
     }
@@ -368,4 +363,16 @@ void comunicaDisconnessione(){
     if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
         printf("Errore nella comunicazione terminazione\n");
     }
+}
+
+void cleanBuffer() {
+    int flags = fcntl(fileno(stdin), F_GETFL, 0); // Get the current flags
+    fcntl(fileno(stdin), F_SETFL, flags | O_NONBLOCK); // Set non-blocking mode
+
+    // Consume characters until reaching the newline or EOF
+    int c;
+    printf("In pulizia\n");
+    while ((c = getchar()) != '\n' && c != EOF) {}
+    printf("Finito pulizia\n");
+    fcntl(fileno(stdin), F_SETFL, flags); // Restore the original flags
 }
