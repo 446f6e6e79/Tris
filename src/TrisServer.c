@@ -228,11 +228,13 @@ int main(int argC, char * argV[]){
             s_wait(semID, SEM_SERVER);
             //Pulisco il tavolo da gioco e di conseguenza passo il turno al player perdente alla prossima signal
             initializeEmptyBoard();
+            printf("Nuovo game\n");
         }
         else{
             //Aggiorna activePlayerIndex
             activePlayerIndex = getOtherPlayerIndex(activePlayerIndex);
             //Riavvio il timer per la mossa successiva
+            printf("RESET ALARM\n");
             alarm(timeOut);
             //Sblocca il giocatore Successivo
             printf("Sbloccato il giocatore%d\n", activePlayerIndex);

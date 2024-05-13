@@ -39,6 +39,7 @@ void terminazioneSicura();
 void printBoard();
 int getPlayIndex();
 void comunicaDisconnessione();
+int askRematch();
 
 /*
     Definisco l'HANDLER per il segnale SIGUSR1. A seconda del valore della variabile stato, assume comportamenti diversi:à
@@ -51,27 +52,20 @@ void sigUser1Handler(int sig){
     switch(sD->stato){
         case 0://La partita termina in pareggio
             printf("\nLa partita è terminata in pareggio!\n");
-            terminazioneSicura();
+            if(playerIndex == 1){
+                s_signal(semID,getOtherPlayerIndex(playerIndex));
+                s_signal(semID, SEM_SERVER);
+            }
             break;
         case 1://Nella partita avviene una vittoria
         case 2:
-            
-
             if(sD->stato == playerIndex){
                 printBoard();
                 printf("\nComplimenti! Hai vinto!\n");
-                printf("\nDesideri giocare ancora? [S, N]:\n");
                 //Clean buffer
                 cleanBuffer();
                 //Chiedo al vincitore se ha intenzione di rigiocare
-                char c;
-                scanf("%c", &c);
-                while(c != 'S' && c != 'N'){
-                    system("clear");
-                    printf("\nDesideri giocare ancora? [S, N]:\n");
-                    scanf("%c", &c);
-                }
-                if(c=='S'){
+                if(askRematch()){
                     //Nel caso il giocatore voglia rigiocare basta svegliare sia il server che il giocatore
                     s_signal(semID,getOtherPlayerIndex(playerIndex));//Avviso l'altro player di voler rigiocare
                     s_signal(semID, SEM_SERVER);//Avviso il server di inizializzare la tavola
@@ -98,25 +92,13 @@ void sigUser1Handler(int sig){
                 //Verifico il caso di partita col computer
                 if(bot==1){
                     //Anche se perdo col computer viene chiesta al player la possibilità di giocare
-                    printf("\nDesideri giocare ancora? [S, N]:\n");
-                    //Clean buffer
-                    cleanBuffer();
-                    //Chiedo al vincitore se ha intenzione di rigiocare
-                    char c;
-                    scanf("%c", &c);
-                    while(c != 'S' && c != 'N'){
-                        system("clear");
-                        printf("\nDesideri giocare ancora? [S, N]:\n");
-                        scanf("%c", &c);
-                    
-                    }
-                    if(c == 'N'){
-
-                        comunicaDisconnessione();
-                        terminazioneSicura();
-                    }else{
+                    if(askRematch()){
                         //Nel caso il giocatore voglia rigiocare
                         s_signal(semID,getOtherPlayerIndex(playerIndex));//Avviso l'altro player di voler rigiocare
+                    }
+                    else{
+                        comunicaDisconnessione();
+                        terminazioneSicura();
                     }
                 }
                 //Passo il turno al server che gestirà il match
@@ -129,34 +111,22 @@ void sigUser1Handler(int sig){
             printBoard();
             printf("Time-out scaduto!\n");
             printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
-
             //Mi metto in attesa e passo il turno attraverso il server
-            s_signal(semID, SEM_SERVER);
             s_wait(semID, playerIndex);
+            
+            s_signal(semID, SEM_SERVER);
+            printf("TIME OUT, mi metto in attesa\n");
+            
             
             printBoard();
             printf("Inserisci coordinate posizione (x y)\n");
             break;
         
         case 4: //L'altro giocatore si è disconnesso
-            //system("clear");
-            printf("Restart: Attesa semaforo memoria condivisa\n");
+            system("clear");
             s_wait(semID, SEM_MUTEX);
-            printf("Restart: Ottenuto semaforo mutex\n");
             printf("%s si è disconnesso\nHai vinto a tavolino!\n",sD->playerName[getOtherPlayerIndex(playerIndex) - 1]);
-            printf("\nDesideri giocare ancora? [S, N]:\n");
-            char c;
-            //Clean buffer
-            cleanBuffer();
-            scanf("%c", &c);
-            while(c != 'S' && c != 'N'){
-                system("clear");
-                printf("\nDesideri giocare ancora? [S, N]:\n");
-                scanf("%c", &c);
-            }
-
-            if(c == 'S'){
-                
+            if(askRematch()){
                 //Resetto l'area di memoria condivisa, mettendomi come giocatore1
                 if(playerIndex != 1){
                     playerIndex = 1;
@@ -164,7 +134,7 @@ void sigUser1Handler(int sig){
                     sD->pids[playerIndex] = getpid(); 
                 }
                 //Altrimenti l'area di memoria è già correttamente settata
-                //system("clear");
+                system("clear");
                 s_signal(semID, SEM_MUTEX);
                 printf("Sbloccato il mutex\n");
                 printf("In attesa dell'altro giocatore\n");
@@ -191,8 +161,9 @@ void sigUser1Handler(int sig){
         nel processo giocatore, la ricezione di tale segnale rappresenta la chiusura del server
 */
 void sigUser2Handler(int sig){
-    //system("clear");
-    errExit("Il processo Server è stato terminato\n");
+    system("clear");
+    printf("Il processo Server è stato terminato\n");
+    exit(1);
 }
 
 /*
@@ -289,9 +260,7 @@ int main(int argC, char * argV[]) {
      *      da un semaforo MUTEX. 
      *      Un solo processo alla volta può modificare la memoria condivisa.
     ************************************/
-    printf("Attesa del semaforo mutex per inizializzazione memoria condivisa\n");
     s_wait(semID, SEM_MUTEX);
-    printf("MUTEX SUPERATO, inizio INIZIALIZZAZIONE MEMORIA CONDIVISA\n");
         //Se sono già presenti due giocatori
         if(sD->activePlayer >= 2){                               
             printf("E' già stato raggiunto il numero massimo di giocatori\n");
@@ -300,14 +269,12 @@ int main(int argC, char * argV[]) {
         }
         sD->activePlayer++;                                     //Incremento il numero di giocatoriAttivi
         playerIndex = sD->activePlayer;                         //Salvo, nella variabile playerIndex l'indice del giocatore
-        printf("PlayerIndex = %d\n", playerIndex);
         strcpy(sD->playerName[playerIndex - 1], argV[1]);       //Copio nella memoria condivisa il nome del giocatore, passato come parameteo
         sD->pids[playerIndex] = getpid();                       //Inserisco nell'array pids il pid del giocatore
         
         //Se sono il secondo giocatore, sblocco tutti i processi in attesa
         if(playerIndex == 2){                                    
             semOp(semID, SEM_INIZIALIZZAZIONE, +3);
-            printf("Sbloccati i 3 processi in attesa\n");
         }
         //Altrimenti sto in attesa dell'arrivo del secondo player
         else{
@@ -326,15 +293,12 @@ int main(int argC, char * argV[]) {
     do{
         printBoard();
         printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]);
-        printf("MIO INDEX: %d\nOTHER INDEX:%d\n", playerIndex, getOtherPlayerIndex(playerIndex)); 
         
         /*
             Giocatore rimane in attesa sul proprio semaforo.
             Dovrà attendere che l'altro giocatore esegua la mossa, per essere sbloccato
         */
-        printf("In attesa sul mio semaforo\n");
         s_wait(semID, playerIndex);
-        printf("E' il mio turno\n");
 
         printBoard();
         
@@ -342,7 +306,6 @@ int main(int argC, char * argV[]) {
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
         //Avvisa il processo Server, che una mossa è stata eseguita
-        printf("Sblocco il server\n");
         s_signal(semID, SEM_SERVER);
     }while(1);
 }
@@ -377,15 +340,13 @@ int getPlayIndex(){
         else{
             printf("ERRORE PARSING: string letta %s\n", input);
         }
-        
-
         printf("Input non valido!\n");
     }
     while(1);
 }
 
 void printBoard(){
-    //system("clear");
+    system("clear");
     printf("\n");
     for (int i = 0; i < BOARD_SIZE; i++){
         printf(" %c ", sD->board[i]);
@@ -417,12 +378,31 @@ sharedData * getSharedMemoryPointer(int shmid){
     Tale funzione, in quanto accede alla memoria condivisa, dovrà essere racchiusa in un semaforo mutex
 */
 void comunicaDisconnessione(){
-    //system("clear");
+    system("clear");
     sD->activePlayer--;
     //Avviso il server che entrambi abbiamo abbandonato
     if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
         printf("Errore nella comunicazione terminazione\n");
     }
+}
+
+int askRematch(){
+    printf("\nDesideri giocare ancora? [S, N]:\n");
+    /*
+        Chiedo ad entrambi i giocatori se hanno intenzione di giocare un nuovo match
+    */
+    cleanBuffer();
+    char c;
+    scanf("%c", &c);
+    while(c != 'S' && c != 'N'){
+        system("clear");
+        printf("\nDesideri giocare ancora? [S, N]:\n");
+        scanf("%c", &c);
+    }
+    if(c == 'S'){
+        return 1;
+    }
+    return 0;
 }
 
 void cleanBuffer() {
@@ -431,8 +411,6 @@ void cleanBuffer() {
 
     // Consume characters until reaching the newline or EOF
     int c;
-    printf("In pulizia\n");
     while ((c = getchar()) != '\n' && c != EOF) {}
-    printf("Finito pulizia\n");
     fcntl(fileno(stdin), F_SETFL, flags); // Restore the original flags
 }
