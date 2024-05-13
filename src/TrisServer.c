@@ -104,6 +104,7 @@ void sigUsr1Handler(int sig){
             //Libero il semaforo del primoPlayer
         }
         else{
+            s_signal(semID, SEM_MUTEX);
             printf("Entrambi i giocatori hanno abbandonato la partita\n");
             terminazioneSicura();
             exit(0);            

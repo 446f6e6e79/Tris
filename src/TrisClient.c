@@ -74,7 +74,6 @@ void sigUser1Handler(int sig){
                     printf("In attesa del giocatore sconfitto\n");//Così facendo il turno d'inizio passerà al player che ha perso
                 }else{
                     //Nel caso mi volessi disconnettere chiudo il processo e decremento i processi attivi
-                    sD->activePlayer--;
                     comunicaDisconnessione();
                     terminazioneSicura();
                 }
@@ -87,6 +86,7 @@ void sigUser1Handler(int sig){
                 s_wait(semID, playerIndex);
                 //Nel caso si fosse scollegato chiudo pure io
                 if(sD->activePlayer == 0){
+                    comunicaDisconnessione();
                     terminazioneSicura();
                 }
                 //Verifico il caso di partita col computer
@@ -112,9 +112,10 @@ void sigUser1Handler(int sig){
             printf("Time-out scaduto!\n");
             printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
             //Mi metto in attesa e passo il turno attraverso il server
-            s_wait(semID, playerIndex);
+            
             
             s_signal(semID, SEM_SERVER);
+            s_wait(semID, playerIndex);
             printf("TIME OUT, mi metto in attesa\n");
             
             
@@ -148,7 +149,6 @@ void sigUser1Handler(int sig){
             }
             //Caso in cui non voglio più giocare
             else{
-                sD->activePlayer--;
                 comunicaDisconnessione();
                 s_signal(semID, SEM_INIZIALIZZAZIONE);
                 terminazioneSicura();
@@ -163,7 +163,7 @@ void sigUser1Handler(int sig){
 void sigUser2Handler(int sig){
     system("clear");
     printf("Il processo Server è stato terminato\n");
-    exit(1);
+    terminazioneSicura();
 }
 
 /*
@@ -195,6 +195,7 @@ void secondSigIntHandler(int sig){
         comunicaDisconnessione();
     //Sblocco il semaforo di MUTEX
     s_signal(semID, SEM_MUTEX);
+    //s_signal(semID. SEM_SERVER); IN ALCUNI CASI SERVE
     printf("\nHai abbandonato la partita.\n");
     terminazioneSicura();
 }
