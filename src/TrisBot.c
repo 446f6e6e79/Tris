@@ -71,7 +71,6 @@ void sigUser1Handler(int sig){
             break;
         
         case 4: //L'altro giocatore si è disconnesso il bot di scollega di conseguenza
-        printf("CIAO\n");
             s_wait(semID, SEM_MUTEX);
            
             

@@ -69,7 +69,7 @@ void sigUser1Handler(int sig){
                     - player1 vs bot
             */
             if(sD->stato == playerIndex){
-                printBoard();
+               
                 printf("\nComplimenti! Hai vinto!\n");
                 cleanBuffer();
                 //Chiedo al vincitore se ha intenzione di rigiocare
@@ -94,7 +94,6 @@ void sigUser1Handler(int sig){
                 Caso in cui 
             */
             else{
-                printBoard();
                 printf("\nHai Perso!\n");
                 //Attendo la decisione del player vincitore
                 s_wait(semID, playerIndex);
