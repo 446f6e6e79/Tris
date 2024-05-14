@@ -53,7 +53,6 @@ void sigUser1Handler(int sig){
         case 0://La partita termina in pareggio
             printf("\nLa partita è terminata in pareggio!\n");
             if(playerIndex == 1){
-                s_signal(semID,getOtherPlayerIndex(playerIndex));
                 s_signal(semID, SEM_SERVER);
             }
             break;
@@ -77,6 +76,7 @@ void sigUser1Handler(int sig){
                     s_wait(semID, SEM_MUTEX);
                     sD->activePlayer--;
                     s_signal(semID, SEM_MUTEX);
+                    //Sblocco il processo PERDENTE
                     s_signal(semID, getOtherPlayerIndex(playerIndex));
                     terminazioneSicura();
                 }
@@ -148,11 +148,9 @@ void sigUser1Handler(int sig){
                 //Altrimenti l'area di memoria è già correttamente settata
                 system("clear");
                 s_signal(semID, SEM_MUTEX);
-                printf("Sbloccato il mutex\n");
                 printf("In attesa dell'altro giocatore\n");
                 //Attendo che si connetta il secondo giocatore
                 s_wait(semID, SEM_INIZIALIZZAZIONE);
-                printf("Finito attesa\n");
                 printBoard();
                 printf("Inserisci coordinate posizione (x y)\n");
                 cleanBuffer();
@@ -161,6 +159,7 @@ void sigUser1Handler(int sig){
             //Caso in cui non voglio più giocare
             else{
                 comunicaDisconnessione();
+                s_signal(semID, SEM_MUTEX);
                 s_signal(semID, SEM_INIZIALIZZAZIONE);
                 terminazioneSicura();
             }
