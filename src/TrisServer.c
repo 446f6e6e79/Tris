@@ -63,8 +63,10 @@ void secondSigIntHandler(int sig){
 
 //Cambio del turno alla ricezione del segnale SIGALRM
 void sigAlarmHandler(int sig){
+    printf("Ricevuto ALARM!");
+    s_wait(semID, SEM_MUTEX);
     sD -> stato = 3; 
-
+    S
     if (kill(sD->pids[activePlayerIndex], SIGUSR1) == -1) {
         errExit("Errore nella fine TimeOut");
     }
@@ -227,6 +229,7 @@ int main(int argC, char * argV[]){
             }
             //Attendo il responso del vincitore ( se volesse chiudere verrà comunicato e avvia la signal)
             s_wait(semID, SEM_SERVER);
+            printf("Sbloccato\n");
             //Pulisco il tavolo da gioco e di conseguenza passo il turno al player perdente alla prossima signal
             initializeEmptyBoard();
             printf("Nuovo game\n");
@@ -266,7 +269,7 @@ int checkVerticalWin(){
     char * board = sD -> board;
     char player1 = sD -> player[0];
     for(int i = 0; i < 3; i++){
-        if(board[i] != ' ' && board[i] == board[i + 3] && board[i] == board[i + 6]){
+        if(board[i] != EMPTY && board[i] == board[i + 3] && board[i] == board[i + 6]){
             if(player1 == board[i]){
                 return 1;
             }else{
@@ -282,7 +285,7 @@ int checkHorizontalWin(){
     char player1 = sD -> player[0];
     
     for(int i = 0; i < 3; i++){
-        if(board[i * 3] != ' ' && board[i*3] == board[i*3 + 1] && board[i*3] == board[i*3 + 2]){
+        if(board[i * 3] != EMPTY && board[i*3] == board[i*3 + 1] && board[i*3] == board[i*3 + 2]){
             if(player1 == board[i*3]){
                 return 1;
             }else{
@@ -297,14 +300,14 @@ int checkDiagonalWin(){
     char *board = sD->board;
     char player1 = sD -> player[0];
 
-    if (board[0] != ' ' && board[0] == board[4] && board[0] == board[8]){
+    if (board[0] != EMPTY && board[0] == board[4] && board[0] == board[8]){
         if(player1 == board[0]){
                 return 1;
             }else{
                 return 2;
             }
     }
-    if (board[2] != ' ' && board[2] == board[4] && board[2] == board[6]){
+    if (board[2] != EMPTY && board[2] == board[4] && board[2] == board[6]){
         if(player1 == board[2]){
                 return 1;
             }else{
@@ -317,7 +320,7 @@ int checkDiagonalWin(){
 int checkFull(){
     char *board = sD->board;
     for(int i=0;i<BOARD_SIZE;i++){
-        if(board[i]==' '){
+        if(board[i]==EMPTY){
             return -1;
         }
     }
@@ -346,6 +349,6 @@ int checkResult(){
 
 void initializeEmptyBoard(){
     for(int i = 0; i < BOARD_SIZE; i++){
-        sD -> board[i] = ' ';
+        sD -> board[i] = EMPTY;
     }
 }

@@ -9,7 +9,7 @@
 #define NUM_SEM 5
 #define NUM_PROCESSES 3
 #define STR_LEN 65
-
+#define EMPTY ' '
 //DEFINIZIONE DELLE KEY
 #define MEMORY_KEY 69
 #define SEM_KEY 70

@@ -4,7 +4,7 @@ WIN PLAYER 1 - REMATCH S            WORKS
 WIN PLAYER 1 - REMATCH N            WORKS
 WIN PLAYER 2 - REMATCH S            WORKS
 WIN PLAYER 2 - REMATCH N            WORKS
-DRAW                                DOESN'T WORK  -> BLOCCATO
+DRAW                                WORK, but p1 has no output -> problema probabilmente a riga 314???
 ABBANDONO PLAYER 1 - REMATCH S      WORKS -> FIRST INPUT IS NOT READ;
 ABBANDONO PLAYER 1 - REMATCH N      WORKS
 ABBANDONO PLAYER 2 - REMATCH S      WORKS

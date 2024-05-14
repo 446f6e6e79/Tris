@@ -51,10 +51,10 @@ int askRematch();
 void sigUser1Handler(int sig){
     switch(sD->stato){
         case 0://La partita termina in pareggio
-            printf("\nLa partita è terminata in pareggio!\n");
-            if(playerIndex == 1){
-                s_signal(semID, SEM_SERVER);
-            }
+            printf("\nLa partita è terminata in pareggio!\nVerrà iniziata una nuova partita\n");
+            //Attendo 3 secondi, poi sblocco il server che inizierà un nuovo game
+            sleep(3);
+            s_signal(semID, SEM_SERVER);
             break;
         case 1://Nella partita avviene una vittoria
         case 2:
@@ -312,7 +312,7 @@ int main(int argC, char * argV[]) {
         s_wait(semID, playerIndex);
 
         printBoard();
-        
+
         //Lettura da input delle coordinate
         int index = getPlayIndex();
         sD->board[index] = sD->player[playerIndex - 1];
