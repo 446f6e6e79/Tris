@@ -45,22 +45,4 @@ void s_signal(int semid, unsigned short sem_num){
     semOp(semid, sem_num, 1);
 }
 
-void s_print(int semid) {
-    struct semid_ds buf;
-    unsigned short values[5];
-
-    // Get current values of all semaphores
-    if (semctl(semid, 0, GETALL, values) == -1) {
-        perror("Error getting semaphore values");
-        return;
-    }
-
-    // Print values of all semaphores
-    printf("Semaphore values:\n");
-    printf("SEM_MUTEX: %u\n", values[0]);
-    printf("SEM_ONE: %u\n", values[1]);
-    printf("SEM_TWO: %u\n", values[2]);
-    printf("SEM_SERVER: %u\n", values[3]);
-    printf("SEM_INIZIALIZZAZIONE: %u\n", values[4]);
-}
 

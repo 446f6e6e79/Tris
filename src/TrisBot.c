@@ -24,31 +24,63 @@ int playerIndex;
 int semID;
 
 void getBotPlay();
+void comunicaDisconnessione();
 void terminazioneSicura();
 void sigUser1Handler(int sig);
 
 void sigUser1Handler(int sig){
-    //Si gestiscono solo i casi di vittoria
-    if(sD->stato == 1){
-        //Attendo la decisione del player vincitore
-        s_wait(semID, playerIndex);
-        //Nel caso si fosse scollegato chiudo pure io
-        if(sD->activePlayer == 0){
+    switch(sD->stato){
+        case 0://La partita termina in pareggio
+            //Attendo 3 secondi, poi sblocco il server che inizierà un nuovo game
+            //Faccio far l'attesa solo al player intando avvio la prima parte del semaforo
+            s_signal(semID, SEM_SERVER);
+
+            break;
+        case 1://Nella partita avviene una vittoria
+        case 2:
+            if(sD->stato == playerIndex){
+                //Nel caso il bot vincesse vuole sempre giocare
+                s_signal(semID, getOtherPlayerIndex(playerIndex));
+                s_signal(semID, SEM_SERVER);//Avviso il server di inizializzare la tavola e che voglio rigiocare
+            }   
+                //Attendo la decisione del player vincitore
+                s_wait(semID, playerIndex);
+
+                /*
+                    Player SCOLLEGATO:
+                        - comunicoDisconnessione al server
+                            - decremento activePlayer = 0
+                            - segnalo l'abbandono al server
+                        - termino correttamente il processo
+                */
+                
+                if(sD->activePlayer == 1){
+                    s_wait(semID, SEM_MUTEX);
+                    comunicaDisconnessione();
+                    s_signal(semID, SEM_MUTEX);
+                    terminazioneSicura();
+                }
+                //Passo il turno al server che gestirà il match
+                s_signal(semID, SEM_SERVER);
+            
+            break;
+        
+        case 3: //Processo server disconnesso
+           
             terminazioneSicura();
-        }
-        //Passo ulteriormente il turno al server che a questo punto mi darà la possibilità di giocare
-        s_signal(semID, SEM_SERVER);
-    }else if(sD->stato == 2){
-        //Passo il turno al player sconfitto, in maniera tale da fargli decidere se rigiocare o mneo
-        s_signal(semID,getOtherPlayerIndex(playerIndex));
-        //Attendo il suo responso
-        s_wait(semID, playerIndex);
-        //Verifico se si è scollegato o meno
-        if(sD->activePlayer == 0){
-            terminazioneSicura();
-        }
-        //Passo ulteriormente il turno al server che a questo punto mi darà la possibilità di giocare
-        s_signal(semID, SEM_SERVER);
+            break;
+        
+        case 4: //L'altro giocatore si è disconnesso il bot di scollega di conseguenza
+        printf("CIAO\n");
+            s_wait(semID, SEM_MUTEX);
+           
+            
+                comunicaDisconnessione();
+                s_signal(semID, SEM_MUTEX);
+                s_signal(semID, SEM_INIZIALIZZAZIONE);
+                terminazioneSicura();
+            
+            break;
     }
 }
 
@@ -77,15 +109,18 @@ int main() {
     }
     //Il comportamento del BOT riprende gli atteggiamenti di un Player
     // Settaggio delle variabili condivise (SEZIONE CRITICA)
-    s_wait(semID, 0);
+    
+    s_wait(semID, SEM_MUTEX);
     playerIndex = 2;
     strcpy(sD->playerName[playerIndex - 1], "Computer");
     sD->pids[playerIndex] = getpid();
     semOp(semID, SEM_INIZIALIZZAZIONE, +3);
-    s_signal(semID, 0);
+    s_signal(semID, SEM_MUTEX);
 
     // Attendo che entrambi i giocatori siano attivi
     s_wait(semID, SEM_INIZIALIZZAZIONE);
+
+    //Incremento activePlayer solo una volta avviato il processo player
     sD->activePlayer++;
 
     // Inizio del gioco
@@ -103,6 +138,17 @@ void terminazioneSicura(){
     //Chiusura memoria condivisa con attach
     shmdt((void *) sD);
     exit(1);
+}
+/*
+    Decremento il valore di activePlayer, invio il segnale al server.
+    Tale funzione, in quanto accede alla memoria condivisa, dovrà essere racchiusa in un semaforo mutex
+*/
+void comunicaDisconnessione(){
+    sD->activePlayer--;
+    //Avviso il server che entrambi abbiamo abbandonato
+    if(kill(sD->pids[PID_SERVER], SIGUSR1) == -1) {
+        terminazioneSicura();
+    }
 }
 
 //Emula un comportamento di un bot generando una posizione casuale in cui inserire il gettone
