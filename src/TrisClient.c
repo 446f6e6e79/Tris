@@ -45,7 +45,7 @@ int askRematch();
     Definisco l'HANDLER per il segnale SIGUSR1. A seconda del valore della variabile stato, assume comportamenti diversi:à
         - stato = 0 -> Partita terminata in pareggio
         - stato = 1 or stato = 2 -> Uno dei due processi ha vinto
-        - stato = 3 -> timer scaduto
+        - stato = 3 -> SERVER DISCONNESSO
         - stato = 4 -> l'altro giocatore si è disconnesso dalla partita
 */
 void sigUser1Handler(int sig){
@@ -117,21 +117,10 @@ void sigUser1Handler(int sig){
             }
             break;
         
-        case 3: //Fine TIME-OUT
-            //Sblocco il processo SERVER    
-            printBoard();
-            printf("Time-out scaduto!\n");
-            printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
-            //Mi metto in attesa e passo il turno attraverso il server
-            
-            
-            s_signal(semID, SEM_SERVER);
-            s_wait(semID, playerIndex);
-            printf("TIME OUT, mi metto in attesa\n");
-            
-            
-            printBoard();
-            printf("Inserisci coordinate posizione (x y)\n");
+        case 3: //Processo server disconnesso
+            system("clear");
+            printf("Il processo Server è stato terminato\n");
+            terminazioneSicura();
             break;
         
         case 4: //L'altro giocatore si è disconnesso
@@ -170,10 +159,21 @@ void sigUser1Handler(int sig){
     Handler per il segnale SIGUSR2:
         nel processo giocatore, la ricezione di tale segnale rappresenta la chiusura del server
 */
+
 void sigUser2Handler(int sig){
-    system("clear");
-    printf("Il processo Server è stato terminato\n");
-    terminazioneSicura();
+    printBoard();
+    printf("Time-out scaduto!\n");
+    printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
+    //Mi metto in attesa e passo il turno attraverso il server
+    
+    
+    s_signal(semID, SEM_SERVER);
+    s_wait(semID, playerIndex);
+    printf("TIME OUT, mi metto in attesa\n");
+    
+    
+    printBoard();
+    printf("Inserisci coordinate posizione (x y)\n");
 }
 
 /*

@@ -53,7 +53,10 @@ void firstSigIntHandler(int sig){
 void secondSigIntHandler(int sig){
     printf("\nIl gioco è stato terminato.\n");
     //Avviso il Client della chiusura del server
-    if (kill(sD->pids[1], SIGUSR2) == -1 || kill(sD->pids[2], SIGUSR2) == -1) {
+    s_wait(semID, SEM_MUTEX);
+        sD->stato = 3;
+    s_signal(semID, SEM_MUTEX);
+    if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
         printf("Errore nell'invio del segnale al client");
         terminazioneSicura();
     }
@@ -63,11 +66,12 @@ void secondSigIntHandler(int sig){
 
 //Cambio del turno alla ricezione del segnale SIGALRM
 void sigAlarmHandler(int sig){
-    printf("Ricevuto ALARM!");
+    printf("Ricevuto ALARM!\n");
     s_wait(semID, SEM_MUTEX);
-    sD -> stato = 3; 
-    S
-    if (kill(sD->pids[activePlayerIndex], SIGUSR1) == -1) {
+        sD -> stato = 3; 
+    s_signal(semID, SEM_MUTEX);
+    printf("INVIO IL SEGNALE A GIOCATORE %d\n", activePlayerIndex);
+    if (kill(sD->pids[activePlayerIndex], SIGUSR2) == -1) {
         errExit("Errore nella fine TimeOut");
     }
 }
@@ -118,7 +122,7 @@ void sigUsr1Handler(int sig){
     INIZIO MAIN
 */
 int main(int argC, char * argV[]){
-
+    printf("PROCESSO CREATO!\n");
     //Setto il nuvo comportamento dei segnali
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGINT Handler");
@@ -192,6 +196,7 @@ int main(int argC, char * argV[]){
     }
     //Inizializzazione terminata
     printf("\nServer avviato correttamente\n");
+    s_print(semID);
 
     /*
         Devo attendere che entrambi i processi siano collegati
@@ -205,10 +210,10 @@ int main(int argC, char * argV[]){
                     INIZIO GIOCO
     ***************************************************/
 
-    //Inizializzo un nuovo timer
-    alarm(timeOut);
+    
     int win;
     do{
+        alarm(timeOut);
         //Attende fino a che activePlayer non ha eseguito la sua mossa
         printf("Attesa nel ciclo do-while\n");
         s_wait(semID, SEM_SERVER);
@@ -237,9 +242,6 @@ int main(int argC, char * argV[]){
         else{
             //Aggiorna activePlayerIndex
             activePlayerIndex = getOtherPlayerIndex(activePlayerIndex);
-            //Riavvio il timer per la mossa successiva
-            printf("RESET ALARM\n");
-            alarm(timeOut);
             //Sblocca il giocatore Successivo
             printf("Sbloccato il giocatore%d\n", activePlayerIndex);
             s_signal(semID, activePlayerIndex);
