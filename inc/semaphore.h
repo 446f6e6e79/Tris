@@ -4,4 +4,5 @@
 void semOp(int semid, unsigned short sem_num, short sem_op);
 void s_wait(int semid, unsigned short sem_num);
 void s_signal(int semid, unsigned short sem_num);
+void s_print(int semid);
 #endif
