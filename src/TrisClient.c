@@ -74,19 +74,30 @@ void sigUser1Handler(int sig){
                     printf("In attesa del giocatore sconfitto\n");//Così facendo il turno d'inizio passerà al player che ha perso
                 }else{
                     //Nel caso mi volessi disconnettere chiudo il processo e decremento i processi attivi
-                    comunicaDisconnessione();
+                    s_wait(semID, SEM_MUTEX);
+                    sD->activePlayer--;
+                    s_signal(semID, SEM_MUTEX);
+                    s_signal(semID, getOtherPlayerIndex(playerIndex));
                     terminazioneSicura();
                 }
-                
             }   
             else{
                 printBoard();
                 printf("\nHai Perso!\n");
                 //Attendo la decisione del player vincitore
                 s_wait(semID, playerIndex);
-                //Nel caso si fosse scollegato chiudo pure io
-                if(sD->activePlayer == 0){
-                    comunicaDisconnessione();
+                /*
+                    Player VINCENTE SCOLLEGATO:
+                        - comunicoDisconnessione al server
+                            - decremento activePlayer = 0
+                            - segnalo l'abbandono al server
+                        - termino correttamente il processo
+                */
+                
+                if(sD->activePlayer == 1){
+                    s_wait(semID, SEM_MUTEX);
+                        comunicaDisconnessione();
+                    s_signal(semID, SEM_MUTEX);
                     terminazioneSicura();
                 }
                 //Verifico il caso di partita col computer
