@@ -21,11 +21,12 @@
 #define PID_SERVER 0
 
 //Definizione variabili globali
-int shmid;
-sharedData *sD;
-int playerIndex;
-int bot=0; //Flag che indica la presenza o meno del bot
-int semID;
+int shmid;                   //Id dell'area di memoria condivisa
+int semID;                   //Id dei semafori
+sharedData *sD;              //Puntatore all'area di memoria condivisa
+int playerIndex;             //Index del giocatore attivo
+int bot=0;                   //Flag che indica la presenza o meno del bot
+                      
 
 //Definizione prototipi
 void firstSigIntHandler(int sig);
@@ -33,6 +34,7 @@ void secondSigIntHandler(int sig);
 void sigAlarmHandler(int sig);
 void sigUser1Handler(int sig);
 void sigUser2Handler(int sig);
+
 void cleanBuffer();
 sharedData * getSharedMemoryPointer(int);
 void terminazioneSicura();
@@ -50,15 +52,19 @@ int askRematch();
 */
 void sigUser1Handler(int sig){
     switch(sD->stato){
-        case 0://La partita termina in pareggio
+        //La partita termina in pareggio
+        case 0:
             printf("\nLa partita è terminata in pareggio!\nVerrà iniziata una nuova partita\n");
             //Attendo 3 secondi, poi sblocco il server che inizierà un nuovo game
             sleep(3);
             s_signal(semID, SEM_SERVER);
             break;
-        case 1://Nella partita avviene una vittoria
+
+        //Nella partita avviene una vittoria
+        case 1:
         case 2:
             if(sD->stato == playerIndex){
+                //Sono il giocatore vincente
                 printBoard();
                 printf("\nComplimenti! Hai vinto!\n");
                 //Clean buffer
@@ -66,15 +72,16 @@ void sigUser1Handler(int sig){
                 //Chiedo al vincitore se ha intenzione di rigiocare
                 if(askRematch()){
                     //Nel caso il giocatore voglia rigiocare basta svegliare sia il server che il giocatore
-                    s_signal(semID,getOtherPlayerIndex(playerIndex));//Avviso l'altro player di voler rigiocare
-                    s_signal(semID, SEM_SERVER);//Avviso il server di inizializzare la tavola
+                    s_signal(semID,getOtherPlayerIndex(playerIndex));       //Avviso l'altro player di voler rigiocare
+                    s_signal(semID, SEM_SERVER);                            //Avviso il server di inizializzare la tavola
                     system("clear");
                     printBoard();
                     printf("In attesa del giocatore sconfitto\n");//Così facendo il turno d'inizio passerà al player che ha perso
-                }else{
+                }
+                else{
                     //Nel caso mi volessi disconnettere chiudo il processo e decremento i processi attivi
                     s_wait(semID, SEM_MUTEX);
-                    sD->activePlayer--;
+                        sD->activePlayer--;
                     s_signal(semID, SEM_MUTEX);
                     //Sblocco il processo PERDENTE
                     s_signal(semID, getOtherPlayerIndex(playerIndex));
@@ -86,6 +93,7 @@ void sigUser1Handler(int sig){
                 printf("\nHai Perso!\n");
                 //Attendo la decisione del player vincitore
                 s_wait(semID, playerIndex);
+                
                 /*
                     Player VINCENTE SCOLLEGATO:
                         - comunicoDisconnessione al server
@@ -93,7 +101,6 @@ void sigUser1Handler(int sig){
                             - segnalo l'abbandono al server
                         - termino correttamente il processo
                 */
-                
                 if(sD->activePlayer == 1){
                     s_wait(semID, SEM_MUTEX);
                         comunicaDisconnessione();
@@ -105,10 +112,10 @@ void sigUser1Handler(int sig){
                     //Anche se perdo col computer viene chiesta al player la possibilità di giocare
                     if(askRematch()){
                         //Nel caso il giocatore voglia rigiocare
-                        s_signal(semID,getOtherPlayerIndex(playerIndex));//Avviso l'altro player di voler rigiocare
+                        s_signal(semID,getOtherPlayerIndex(playerIndex));   //Avviso il bot di voler rigiocare
                     }
                     else{
-                        comunicaDisconnessione();
+                        sD->activePlayer--;
                         terminazioneSicura();
                     }
                 }
@@ -156,22 +163,21 @@ void sigUser1Handler(int sig){
     }
 }
 /*
-    Handler per il segnale SIGUSR2:
-        nel processo giocatore, la ricezione di tale segnale rappresenta la chiusura del server
+    Handler per il segnale SIGUSR2, usato per il TIMEOUT:
+        - una volta ricevuto il timeOut sblocco il processo server, che passerà il turno al giocatore successivo
+        - mi metto in attesa di ricevere un nuovo turno
 */
-
 void sigUser2Handler(int sig){
     printBoard();
     printf("Time-out scaduto!\n");
     printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
+    
     //Mi metto in attesa e passo il turno attraverso il server
-    
-    
     s_signal(semID, SEM_SERVER);
     s_wait(semID, playerIndex);
     printf("TIME OUT, mi metto in attesa\n");
     
-    
+    //Ottenuto nuovamente il turno
     printBoard();
     printf("Inserisci coordinate posizione (x y)\n");
 }
@@ -220,7 +226,9 @@ void sigAlarmHandler(int sig){
 }
 
 /***********************
+  
     INIZIO MAIN
+
 ************************/
 int main(int argC, char * argV[]) {
     if (signal(SIGALRM, sigAlarmHandler) == SIG_ERR) {

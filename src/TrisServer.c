@@ -42,7 +42,10 @@ int checkResult();
 //Handler per il primo SIGINT dovuto a "CRTL-C"
 void firstSigIntHandler(int sig){
     printf("\nÈ stato premuto CTRL-C.\nUna seconda pressione comporta la terminazione!\n");
-    //Cambio ora il comportamento al segnale sigInt
+    /*
+        Cambio il comportamento al segnale SIGINT.
+        In questo modo, alla prossima pressione il processo verrà terminato
+    */
     if (signal(SIGINT, secondSigIntHandler) == SIG_ERR) {
         terminazioneSicura();
         errExit("Error registering SIGINT handler");
