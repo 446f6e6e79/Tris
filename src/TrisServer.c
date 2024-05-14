@@ -155,7 +155,7 @@ int main(int argC, char * argV[]){
     }
     
     //Generazione della memoria condivisa
-    shmid = shmget(MEMORY_KEY, sizeof(sharedData), 0666 | IPC_CREAT);
+    shmid = shmget(MEMORY_KEY, sizeof(sharedData), 0666 | IPC_EXCL | IPC_CREAT);
     if(shmid < 0){
         errExit("Errore nella generazione della memoria condivisa\n");
     }
@@ -178,7 +178,7 @@ int main(int argC, char * argV[]){
     initializeEmptyBoard();
     
     //Iniziallizzazione dei semafori
-    semID =  semget(SEM_KEY, NUM_SEM, IPC_CREAT | 0666 );
+    semID =  semget(SEM_KEY, NUM_SEM, IPC_CREAT | IPC_EXCL | 0666 );
     if(semID == -1){
         shmdt((void *) sD);//Pulisco memoria
         shmctl(shmid, IPC_RMID, NULL);
