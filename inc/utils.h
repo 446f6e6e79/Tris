@@ -19,6 +19,7 @@
 #define SEM_SERVER 3
 #define SEM_MUTEX 0
 
+#define PID_SERVER 0
 /*Stato 0 -> pareggio
         1 -> vittoria player1
         2 -> vittoria player2
