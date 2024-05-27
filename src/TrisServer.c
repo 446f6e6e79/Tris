@@ -322,15 +322,23 @@ int checkFull(){
     - (2) vittoria giocatore2
 */
 int checkResult(){
-    if(checkHorizontalWin()!=0){
-        return checkHorizontalWin();
+    int result;
+    
+    result = checkHorizontalWin();
+    if(result != 0){
+        return result;
     }
-    if(checkVerticalWin()!=0){
-        return checkVerticalWin();
+
+    result = checkVerticalWin();
+    if(result != 0){
+        return result;
     }
-    if(checkDiagonalWin()!=0){
-        return checkDiagonalWin();
+
+    result = checkDiagonalWin();
+    if(result != 0){
+        return result;
     }
+    
     return checkFull();
 }
 

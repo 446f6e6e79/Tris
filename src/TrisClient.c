@@ -444,6 +444,6 @@ void cleanBuffer() {
 
     
     int c;
-    while ((c = getchar()) != '\n' && c != EOF) {}
+    while ((c = getchar()) != EOF) {}
     fcntl(fileno(stdin), F_SETFL, flags); 
 }
