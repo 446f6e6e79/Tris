@@ -7,7 +7,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/ipc.h> 
 #include <sys/shm.h>
 #include <sys/sem.h>
@@ -75,8 +76,6 @@ void secondSigIntHandler(int sig){
         printf("Errore nell'invio del segnale al client\n");
         terminazioneSicura();
     }
-    
-    printf("Terminazione sicura\n");
     terminazioneSicura();
 }
 
@@ -202,15 +201,33 @@ int main(int argC, char * argV[]){
         //Inizializzo la board di gioco vuota
         initializeEmptyBoard();
     s_signal(semID, SEM_MUTEX);
-
+    printf("In attesa del primo giocatore\n");
     /* Rimango in attesa che si sia connesso il primo giocatore */
     s_wait(semID, SEM_INIZIALIZZAZIONE);
+        printf("Primo giocatore connesso\n");
         s_wait(semID, SEM_MUTEX);
         //Se vuole giocare contro il bot:
         if(sD->playAgainstBot){
              //Creo un processo figlio, eseguirà TrisBot
             pid_t pid = fork();
             if(pid == 0){
+                //Si reindirizza l'output del bot in un "buco nero" in maniera tale da non sovrascrivere le stampe del server
+                int devNull = open("/dev/null", 0666); //dev/nul è una cartella che comunemente si utilizza come buco nero
+                if (devNull == -1) {
+                    errExit("Errore nell'apertura di /dev/null\n");
+                }
+
+                //Reindirizzo attraverso la dup2
+                if (dup2(devNull, STDOUT_FILENO) == -1) {
+                    errExit("Errore nel redirezionare stdout\n");
+                }
+
+                if (dup2(devNull, STDERR_FILENO) == -1) {
+                    errExit("Errore nel redirezionare stderr\n");
+                }
+                //A questo punto non mi serve più devNull
+                close(devNull);
+                //Creo il bot senza problemi di output
                 execl("./bin/TrisClient", "TrisClient", "Computer", NULL);
                 errExit("Errore nella exec\n");
             }

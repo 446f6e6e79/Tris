@@ -4,7 +4,8 @@
         "types.h": "c",
         "semaphore.h": "c",
         "sem.h": "c",
-        "unistd.h": "c"
+        "unistd.h": "c",
+        "ipc.h": "c"
     },
     "C_Cpp.errorSquiggles": "disabled"
 }

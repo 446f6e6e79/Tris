@@ -81,7 +81,7 @@ void sigUser1Handler(int sig) {
             break;
         // L'altro giocatore si è disconnesso
         case 4: 
-            printf("L'altro giocatore ha abbandonato la partita\nHai vinto a tavolino!");
+            printf("L'altro giocatore ha abbandonato la partita\nHai vinto a tavolino!\n");
             break;
     }
     s_signal(semID, SEM_SERVER);
