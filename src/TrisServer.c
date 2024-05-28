@@ -68,13 +68,14 @@ void secondSigIntHandler(int sig){
 //Cambio del turno alla ricezione del segnale SIGALRM
 void sigAlarmHandler(int sig){
     s_wait(semID, SEM_MUTEX);
-    sD -> stato = 3; 
+        sD -> stato = 3; 
     s_signal(semID, SEM_MUTEX);
     if (kill(sD->pids[activePlayerIndex], SIGUSR2) == -1) {
         printf("Errore nel segnale dell'alarm\n");
         terminazioneSicura();
     }
 }
+
 /* Handler che gestisce il caso: uno dei due processi si è disconnesso*/
 void sigUsr1Handler(int sig){
     //Controllo quanti giocatori sono rimasti:
@@ -83,8 +84,6 @@ void sigUsr1Handler(int sig){
     if(sD->activePlayer == 1){
         //Disattivo il time-out
         alarm(0);
-        //Svuoto l'area di gioco
-        initializeEmptyBoard();
         sD->stato = 4;
         //Se il player a chiudersi è il player attivo, ai fini di evitare il deadlock svegli il processo in attesa
         if(activePlayerIndex == sD->indexPlayerLefted ){
@@ -94,22 +93,13 @@ void sigUsr1Handler(int sig){
         if (kill(sD->pids[getOtherPlayerIndex(sD->indexPlayerLefted)], SIGUSR1) == -1){
             errExit("Errore nell'invio del messaggio: sigUsr1, stato = 4\n");
         }
-            
-        activePlayerIndex = 1; //Resettiamo come player attivo il primo player (potrebbero cambiare di posizione)
-
-        s_signal(semID, SEM_MUTEX);
-        //Attende che si connetta un ulteriore giocatore
-        s_wait(semID, SEM_INIZIALIZZAZIONE);
-        //Libero il semaforo del primoPlayer
-        }
-    else{
-        //Nel caso entrambi i giocatori avessero abbandonato
-        s_signal(semID, SEM_MUTEX);
-        printf("Entrambi i giocatori hanno abbandonato la partita\n");
-        terminazioneSicura();          
     }
+    //Attendo che leggano i risultati entrambi i player e poi chiudo
+    printf("ATTENDO SU SEM_SERVER\n");
+    semOp(semID, SEM_SERVER, -1);
+    printf("FINITO ATTESO");
+    terminazioneSicura();
 }
-
 
 /*  
     INIZIO MAIN
@@ -152,6 +142,7 @@ int main(int argC, char * argV[]){
         errExit("Errore nella generazione della memoria condivisa\n");
     }
     
+
     //Attacco l'array board alla zona di memoria condivisa
     sD = shmat(shmid, NULL, 0);
     if(sD == (void *)-1){
@@ -160,23 +151,14 @@ int main(int argC, char * argV[]){
     }
     sD = (sharedData *)sD;
     
-    //Inizializzazione della memoria condivisa
-    sD -> player[0] = argV[2][0];
-    sD -> player[1] = argV[3][0];
-    sD -> activePlayer = 0;
-    sD -> pids[0] = getpid();
-    
-    //Inizializzo la board di gioco vuota
-    initializeEmptyBoard();
-    
-    //Iniziallizzazione dei semafori
+
+    //Iniziallizzazione e ottenimento dei semafori
     semID =  semget(SEM_KEY, NUM_SEM, IPC_CREAT | IPC_EXCL | 0666 );
     if(semID == -1){
         shmdt((void *) sD);//Pulisco memoria
         shmctl(shmid, IPC_RMID, NULL);
         errExit("Errore nella get del semaforo\n");
     }
-
     unsigned short values[5] = {1, 0, 0, 0, 0};
     union semun arg;
     arg.array = values;
@@ -185,15 +167,45 @@ int main(int argC, char * argV[]){
         printf("semctl SET fallita");
         terminazioneSicura();
     }
+
+    //Inizializzazione della memoria condivisa
+    s_wait(semID, SEM_MUTEX);
+        sD -> player[0] = argV[2][0];
+        sD -> player[1] = argV[3][0];
+        sD -> activePlayer = 0;
+        sD -> pids[0] = getpid();
+    
+        //Inizializzo la board di gioco vuota
+        initializeEmptyBoard();
+    s_signal(semID, SEM_MUTEX);
+
+    /* Rimango in attesa che si sia connesso il primo giocatore */
+    s_wait(semID, SEM_INIZIALIZZAZIONE);
+        s_wait(semID, SEM_MUTEX);
+        //Se vuole giocare contro il bot:
+        if(sD->playAgainstBot){
+             //Creo un processo figlio, eseguirà TrisBot
+            pid_t pid = fork();
+            if(pid == 0){
+                execl("./bin/TrisClient", "TrisClient", "Computer", NULL);
+                errExit("Errore nella exec\n");
+            }
+            else if(pid < 0){
+                errExit("Errore nella creazione del BOT\n");
+            }
+        }
+        s_signal(semID, SEM_MUTEX);
+    
     //Inizializzazione terminata
     printf("\nServer avviato correttamente\n");
 
-    /*
-        Devo attendere che entrambi i processi siano collegati
-    */
-    s_wait(semID, SEM_INIZIALIZZAZIONE);
-
+    //Rimango in attesa che il secondo giocatore si connetta
+    s_wait(semID, SEM_SERVER);
     //Libero il semaforo del primoPlayer
+    s_signal(semID, 1);
+    s_signal(semID, 2);
+
+    //Sveglio il player 1 per giocare
     s_signal(semID, 1);
 
     /**************************************************
@@ -212,6 +224,7 @@ int main(int argC, char * argV[]){
         alarm(0);
 
         win = checkResult();
+        
         //Se c'è un vincitore
         if(win >= 0){
             //Setto stato a vittoria
@@ -221,10 +234,7 @@ int main(int argC, char * argV[]){
                 printf("Errore nell'invio dei segnali\n");
                 terminazioneSicura();
             }
-            //Attendo il responso del vincitore ( se volesse chiudere verrà comunicato e avvia la signal)
-            s_wait(semID, SEM_SERVER);
-            //Pulisco il tavolo da gioco e di conseguenza passo il turno al player perdente alla prossima signal
-            initializeEmptyBoard();
+            terminazioneSicura();
         }
         else{
             //Aggiorna activePlayerIndex
@@ -313,9 +323,9 @@ int checkFull(){
     }
     return 0;
 }
+
 /*  
     Funzione che verifica lo stato di gioco. Ritorna:
-
     - (-1) in caso di gioco non terminato,
     - (0) in caso di pareggio,
     - (1) vittoria giocatore1,

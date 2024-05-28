@@ -33,6 +33,7 @@ typedef struct SharedData{
     pid_t pids[NUM_PROCESSES];      //Array dei pid dei processi
     int stato;                      //Stato del gioco
     int indexPlayerLefted;          //Nel caso di chiusura, salva il processo che la richiede
+    int playAgainstBot;
 }sharedData;
 
 union semun {

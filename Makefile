@@ -1,11 +1,10 @@
 NAME_CLIENT=TrisClient
 NAME_SERVER=TrisServer
-NAME_BOT=TrisBot
 
 CFLAGS=-Wall -std=gnu99 -m64
 INCLUDES=-I./inc
 
-SRCS=src/errExit.c src/TrisClient.c src/TrisServer.c src/semaphore.c src/TrisBot.c src/utils.c
+SRCS=src/errExit.c src/TrisClient.c src/TrisServer.c src/semaphore.c src/utils.c
 
 OBJ_DIR=obj
 BIN_DIR=bin
@@ -19,10 +18,6 @@ $(BIN_DIR)/$(NAME_CLIENT): $(OBJ_DIR)/TrisClient.o $(OBJ_DIR)/errExit.o $(OBJ_DI
 	@$(CC) $^ -o $@
 
 $(BIN_DIR)/$(NAME_SERVER): $(OBJ_DIR)/TrisServer.o $(OBJ_DIR)/errExit.o $(OBJ_DIR)/semaphore.o $(OBJ_DIR)/utils.o
-	@echo "Making executable: "$@
-	@$(CC) $^ -o $@
-
-$(BIN_DIR)/$(NAME_BOT): $(OBJ_DIR)/TrisBot.o $(OBJ_DIR)/errExit.o $(OBJ_DIR)/semaphore.o $(OBJ_DIR)/utils.o
 	@echo "Making executable: "$@
 	@$(CC) $^ -o $@
 
