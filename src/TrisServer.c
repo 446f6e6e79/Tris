@@ -60,6 +60,8 @@ void secondSigIntHandler(int sig){
     if(sD->activePlayer == 0){
         terminazioneSicura();
     }
+
+    //Se c'è un solo player
     int result = kill(sD->pids[1], SIGUSR1);
     if(sD->activePlayer == 1 && result != -1 ) {
         terminazioneSicura();
@@ -67,12 +69,14 @@ void secondSigIntHandler(int sig){
         printf("Errore nell'invio del segnale\n");
         terminazioneSicura();
     }
-    
+
+    //Se ce ne sono due 
     if(kill(sD->pids[2], SIGUSR1) == -1){
         printf("Errore nell'invio del segnale al client\n");
         terminazioneSicura();
     }
-    printf("Terinazone sicura\n");
+    
+    printf("Terminazione sicura\n");
     terminazioneSicura();
 }
 

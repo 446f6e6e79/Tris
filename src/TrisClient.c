@@ -18,6 +18,7 @@
 #include "errExit.h"
 #include "semaphore.h"
 #include "utils.h"
+#include <time.h>
 
 
 #define PID_SERVER 0
@@ -156,6 +157,9 @@ void sigAlarmHandler(int sig){
     INIZIO MAIN
 ************************/
 int main(int argC, char * argV[]) {
+    //Inizializzo il random
+    srand(time(NULL));
+
     if (signal(SIGALRM, sigAlarmHandler) == SIG_ERR) {
             errExit("change signal handler failed");
     }
