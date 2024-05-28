@@ -10,14 +10,12 @@
 #define NUM_PROCESSES 3
 #define STR_LEN 65
 #define EMPTY ' '
-//DEFINIZIONE DELLE KEY
-#define MEMORY_KEY 69
-#define SEM_KEY 70
 
 //DEFINIZIONE ID SEMAFORI
 #define SEM_INIZIALIZZAZIONE 4
 #define SEM_SERVER 3
 #define SEM_MUTEX 0
+#define KEY_PATHNAME "/tmp"
 
 #define PID_SERVER 0
 /*Stato 0 -> pareggio

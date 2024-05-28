@@ -53,16 +53,27 @@ void firstSigIntHandler(int sig){
 void secondSigIntHandler(int sig){
     printf("\nIl gioco è stato terminato.\n");
     //Avviso il Client della chiusura del server
-    s_wait(semID, SEM_MUTEX);
     sD->stato = 3;
-    s_signal(semID, SEM_MUTEX);
-    //Avverto entrambi i giocatori di aver terminato forzatamente
-    if (kill(sD->pids[1], SIGUSR1) == -1 || kill(sD->pids[2], SIGUSR1) == -1) {
+
+    
+    //Se non ho player a cui comunicare chiudo
+    if(sD->activePlayer == 0){
+        terminazioneSicura();
+    }
+    int result = kill(sD->pids[1], SIGUSR1);
+    if(sD->activePlayer == 1 && result != -1 ) {
+        terminazioneSicura();
+    }else if(result == -1){
+        printf("Errore nell'invio del segnale\n");
+        terminazioneSicura();
+    }
+    
+    if(kill(sD->pids[2], SIGUSR1) == -1){
         printf("Errore nell'invio del segnale al client\n");
         terminazioneSicura();
     }
+    printf("Terinazone sicura\n");
     terminazioneSicura();
-    
 }
 
 //Cambio del turno alla ricezione del segnale SIGALRM
@@ -95,9 +106,7 @@ void sigUsr1Handler(int sig){
         }
     }
     //Attendo che leggano i risultati entrambi i player e poi chiudo
-    printf("ATTENDO SU SEM_SERVER\n");
     semOp(semID, SEM_SERVER, -1);
-    printf("FINITO ATTESO");
     terminazioneSicura();
 }
 
@@ -105,6 +114,8 @@ void sigUsr1Handler(int sig){
     INIZIO MAIN
 */
 int main(int argC, char * argV[]){
+    system("clear");
+
     //Setto il nuvo comportamento dei segnali
     if (signal(SIGINT, firstSigIntHandler) == SIG_ERR) {
         errExit("Errore nel SIGINT Handler");
@@ -135,9 +146,14 @@ int main(int argC, char * argV[]){
     if(strlen(argV[2]) != 1 || strlen(argV[3])!= 1){
         errExit("Simboli devono essere caratteri");
     }
+
+    key_t key = ftok(KEY_PATHNAME, 'm');
+    if (key == -1) {
+        errExit("Error generating key using ftok");
+    }
     
     //Generazione della memoria condivisa
-    shmid = shmget(MEMORY_KEY, sizeof(sharedData), 0666 | IPC_EXCL | IPC_CREAT);
+    shmid = shmget(key, sizeof(sharedData), 0666 | IPC_EXCL | IPC_CREAT);
     if(shmid < 0){
         errExit("Errore nella generazione della memoria condivisa\n");
     }
@@ -151,9 +167,13 @@ int main(int argC, char * argV[]){
     }
     sD = (sharedData *)sD;
     
+    key_t keyS= ftok(KEY_PATHNAME, 's');
+    if (keyS == -1) {
+        errExit("Error generating key using ftok");
+    }
 
     //Iniziallizzazione e ottenimento dei semafori
-    semID =  semget(SEM_KEY, NUM_SEM, IPC_CREAT | IPC_EXCL | 0666 );
+    semID =  semget(keyS, NUM_SEM, IPC_CREAT | IPC_EXCL | 0666 );
     if(semID == -1){
         shmdt((void *) sD);//Pulisco memoria
         shmctl(shmid, IPC_RMID, NULL);
@@ -197,14 +217,16 @@ int main(int argC, char * argV[]){
         s_signal(semID, SEM_MUTEX);
     
     //Inizializzazione terminata
-    printf("\nServer avviato correttamente\n");
-
+    
+    printf("In attesa di un secondo giocatore\n");
     //Rimango in attesa che il secondo giocatore si connetta
     s_wait(semID, SEM_SERVER);
+    printf("Secondo giocatore connesso!\n");
     //Libero il semaforo del primoPlayer
     s_signal(semID, 1);
     s_signal(semID, 2);
 
+    printf("\nServer avviato correttamente\n");
     //Sveglio il player 1 per giocare
     s_signal(semID, 1);
 
@@ -247,13 +269,12 @@ int main(int argC, char * argV[]){
 
 }
 
-
+//Chiusura e pulizia della memoria condivisa con annessi attach
 void terminazioneSicura(){
-    //Chiusura e pulizia della memoria condivisa con annessi attach
-    printf("Terminazione del server eseguita correttamente\n");
     shmdt((void *) sD);
     shmctl(shmid, IPC_RMID, NULL);
     semctl(semID, 0, IPC_RMID, NULL);
+    printf("Terminazione del server eseguita correttamente\n");
     exit(0);
 }
 

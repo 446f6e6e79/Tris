@@ -49,10 +49,15 @@ int getBotPlay();
         - stato = 1 or stato = 2 -> Uno dei due processi ha vinto
         - stato = 3 -> SERVER DISCONNESSO
         - stato = 4 -> l'altro giocatore si è disconnesso dalla partita
+    
+    Non è necessario proteggere tale parte di codice con un mutex.
+     Sarà infatti il server a settare la variabile STATO e, solamente in seguito,
+     entrambi i processi accederanno a tale variabile, IN LETTURA.
 */
 void sigUser1Handler(int sig) {
     printBoard();
     switch(sD->stato) {
+        
         // La partita termina in pareggio
         case 0: 
             printf("\nLa partita è terminata in pareggio!\nVerrà iniziata una nuova partita\n");
@@ -354,5 +359,5 @@ int getBotPlay() {
         index = rand() % BOARD_SIZE;
     } while (sD->board[index] != ' ');
 
-    return index;;
+    return index;
 }

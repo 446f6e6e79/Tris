@@ -8,7 +8,11 @@ int getOtherPlayerIndex(int index){
 }
 
 int getSemaforeID(){
-    int semID =  semget(SEM_KEY, NUM_SEM, 0666);
+    key_t key = ftok(KEY_PATHNAME, 's');
+    if (key == -1) {
+        errExit("Error generating key using ftok");
+    }
+    int semID =  semget(key, NUM_SEM, 0666);
     if(semID == -1){
         //Questo errore si verifica solo nel caso il server non venga avviato o avviato correttamente
         //perciò si avvisa l'utente del malfunzionamento del server o della sua assenza
@@ -19,8 +23,12 @@ int getSemaforeID(){
 }
     
 int sharedMemoryAttach(){
+    key_t key = ftok(KEY_PATHNAME, 'm');
+    if (key == -1) {
+        errExit("Error generating key using ftok");
+    }
     //Recupero lo shareMemoryID usando la systemCall shmget
-    int shmid = shmget(MEMORY_KEY, sizeof(sharedData), 0666);
+    int shmid = shmget(key, sizeof(sharedData), 0666);
     if (shmid < 0) {
         printf("Non è stato avviato il server\n");
         exit(1);
