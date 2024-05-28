@@ -205,8 +205,17 @@ int main(int argC, char * argV[]) {
 
         //Selezionato di giocare contro il BOT
         if(argC == 3 && argV[2][0] == '*'){
-            sD->playAgainstBot = 1;
+            //Sono il primo giocatore
+            if(!sD->activePlayer){
+                sD->playAgainstBot = 1;
+            }
+            else{
+                printf("Non è possibile giocare contro un bot in questo momento!\n");
+                s_signal(semID, SEM_MUTEX);                         //Sblocco il semaforo
+                terminazioneSicura();                               //Termino il processo.
+            }
         }
+
         sD->activePlayer++;
         playerIndex = sD->activePlayer;                         //Salvo, nella variabile playerIndex l'indice del giocatore
         strcpy(sD->playerName[playerIndex - 1], argV[1]);       //Copio nella memoria condivisa il nome del giocatore, passato come parameteo
