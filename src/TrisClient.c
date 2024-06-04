@@ -20,14 +20,10 @@
 #include "utils.h"
 #include <time.h>
 
-
-#define PID_SERVER 0
-
 //Definizione variabili globali
 int shmid;
 sharedData *sD;
 int playerIndex;
-
 int semID;
 
 //Definizione prototipi
@@ -58,10 +54,9 @@ int getBotPlay();
 void sigUser1Handler(int sig) {
     printBoard();
     switch(sD->stato) {
-        
         // La partita termina in pareggio
         case 0: 
-            printf("\nLa partita è terminata in pareggio!\nVerrà iniziata una nuova partita\n");
+            printf("\nLa partita è terminata in pareggio!\n");
             break;
 
         // Nella partita avviene una vittoria    
@@ -99,7 +94,8 @@ void sigUser2Handler(int sig){
     printf("\nIn attesa che %s faccia la sua mossa!\n", sD->playerName[getOtherPlayerIndex(playerIndex) - 1]); 
     //Mi metto in attesa e passo il turno attraverso il server
     s_signal(semID, SEM_SERVER);
-    s_wait(semID, playerIndex);    
+    s_wait(semID, playerIndex);   
+    cleanBuffer(); 
     printBoard();
     printf("Inserisci coordinate posizione (x y)\n");
 }
