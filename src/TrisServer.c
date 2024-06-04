@@ -211,22 +211,10 @@ int main(int argC, char * argV[]){
              //Creo un processo figlio, eseguirà TrisBot
             pid_t pid = fork();
             if(pid == 0){
-                //Si reindirizza l'output del bot in un "buco nero" in maniera tale da non sovrascrivere le stampe del server
-                int devNull = open("/dev/null", 0666); //dev/nul è una cartella che comunemente si utilizza come buco nero
-                if (devNull == -1) {
-                    errExit("Errore nell'apertura di /dev/null\n");
-                }
+                
+                //Chiudiamo lo STDOUTPUT per il bot
+                close(STDOUT_FILENO);
 
-                //Reindirizzo attraverso la dup2
-                if (dup2(devNull, STDOUT_FILENO) == -1) {
-                    errExit("Errore nel redirezionare stdout\n");
-                }
-
-                if (dup2(devNull, STDERR_FILENO) == -1) {
-                    errExit("Errore nel redirezionare stderr\n");
-                }
-                //A questo punto non mi serve più devNull
-                close(devNull);
                 //Creo il bot senza problemi di output
                 execl("./bin/TrisClient", "TrisClient", "Computer", NULL);
                 errExit("Errore nella exec\n");
