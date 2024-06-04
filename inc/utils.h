@@ -18,10 +18,12 @@
 #define KEY_PATHNAME "/tmp"
 
 #define PID_SERVER 0
+
 /*Stato 0 -> pareggio
         1 -> vittoria player1
         2 -> vittoria player2
-        3 -> timeOut      
+        3 -> disconnessione Server
+        4 -> disconnessione altro giocatore      
 */
 typedef struct SharedData{
     char player[2];                 //Simboli del player
