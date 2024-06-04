@@ -149,7 +149,7 @@ int main(int argC, char * argV[]){
     if(strlen(argV[2]) != 1 || strlen(argV[3])!= 1){
         errExit("Simboli devono essere caratteri");
     }
-
+    //Genero una chiave per aver un identificatore per generare semafori e memoria
     key_t key = ftok(KEY_PATHNAME, 'm');
     if (key == -1) {
         errExit("Error generating key using ftok");
@@ -169,7 +169,7 @@ int main(int argC, char * argV[]){
         errExit("Errore nell'attach alla memoria condivisa\n");
     }
     sD = (sharedData *)sD;
-    
+    //Genero una chiave per aver un identificatore per generare semafori e memoria
     key_t keyS= ftok(KEY_PATHNAME, 's');
     if (keyS == -1) {
         errExit("Error generating key using ftok");
@@ -185,7 +185,7 @@ int main(int argC, char * argV[]){
     unsigned short values[5] = {1, 0, 0, 0, 0};
     union semun arg;
     arg.array = values;
-    
+    //Si inizializzano i primi valori dei semafori con i valori definiti da values
     if (semctl(semID, 0, SETALL, arg) == -1){
         printf("semctl SET fallita");
         terminazioneSicura();
@@ -204,17 +204,17 @@ int main(int argC, char * argV[]){
     printf("In attesa del primo giocatore\n");
     /* Rimango in attesa che si sia connesso il primo giocatore */
     s_wait(semID, SEM_INIZIALIZZAZIONE);
-        printf("Primo giocatore connesso\n");
-        s_wait(semID, SEM_MUTEX);
+    printf("Primo giocatore connesso\n");
+    //Accedo alla sezione critica e verifico la decisione del primo giocatore
+    s_wait(semID, SEM_MUTEX);
         //Se vuole giocare contro il bot:
         if(sD->playAgainstBot){
              //Creo un processo figlio, eseguirà TrisBot
             pid_t pid = fork();
             if(pid == 0){
-                
-                //Chiudiamo lo STDOUTPUT per il bot
+                //Chiudiamo lo STDOUTPUT e STDERROR per il bot, per evitare sovrapposizione di stampe
                 close(STDOUT_FILENO);
-
+                close(STDERR_FILENO);
                 //Creo il bot senza problemi di output
                 execl("./bin/TrisClient", "TrisClient", "Computer", NULL);
                 errExit("Errore nella exec\n");
@@ -223,18 +223,18 @@ int main(int argC, char * argV[]){
                 errExit("Errore nella creazione del BOT\n");
             }
         }
-        s_signal(semID, SEM_MUTEX);
+    s_signal(semID, SEM_MUTEX);
     
     //Inizializzazione terminata
     
     printf("In attesa di un secondo giocatore\n");
-    //Rimango in attesa che il secondo giocatore si connetta
+    //Rimango in attesa che il secondo giocatore si connetta, (che sia bot o meno)
     s_wait(semID, SEM_SERVER);
     printf("Secondo giocatore connesso!\n");
-    //Libero il semaforo del primoPlayer
+    //Libero ii semaforo dei player per andare oltre l'inizializzazione
     s_signal(semID, 1);
     s_signal(semID, 2);
-
+    //A questo punto l'inizializzazione del server è terminata
     printf("\nServer avviato correttamente\n");
     //Sveglio il player 1 per giocare
     s_signal(semID, 1);
@@ -246,6 +246,7 @@ int main(int argC, char * argV[]){
     
     int win;
     do{
+        //Setto il timer per la giocata e lo faccio partire
         alarm(timeOut);
 
         //Attende fino a che activePlayer non ha eseguito la sua mossa
@@ -254,6 +255,7 @@ int main(int argC, char * argV[]){
         //Resetta l'alarm precedente, se presente
         alarm(0);
 
+        //Verifica lo stato della partita
         win = checkResult();
         
         //Se c'è un vincitore
@@ -268,7 +270,7 @@ int main(int argC, char * argV[]){
             terminazioneSicura();
         }
         else{
-            //Aggiorna activePlayerIndex
+            //Aggiorna activePlayerIndex in maniera tale da passare il turno
             activePlayerIndex = getOtherPlayerIndex(activePlayerIndex);
             //Sblocca il giocatore Successivo
             s_signal(semID, activePlayerIndex);
