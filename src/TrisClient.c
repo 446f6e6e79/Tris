@@ -205,7 +205,8 @@ int main(int argC, char * argV[]) {
 
         //Selezionato di giocare contro il BOT
         if(argC == 3 && argV[2][0] == '*'){
-            //Sono il primo giocatore
+            
+            //Se non sono presenti ulteriori giocatori
             if(!sD->activePlayer){
                 sD->playAgainstBot = 1;
             }

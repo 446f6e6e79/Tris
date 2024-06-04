@@ -21,11 +21,13 @@
 void semOp(int semid, unsigned short sem_num, short sem_op) {
     struct sembuf op;
     op.sem_num = sem_num;
-    op.sem_op = sem_op;    
+    op.sem_op = sem_op;
+    errno = 0    
     int result = semop(semid, &op, 1);
+    
     //Questo controllo verifica che l'operazione(wait) non sia stata interrota da un segnale
     //e nel caso riprende il suo comportamento
-    while( result == -1 && errno == EINTR ){
+    while( result == -1 && errno == EINTR {
         result = semop(semid, &op, 1);
     }
 }
