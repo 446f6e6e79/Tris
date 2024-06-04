@@ -128,14 +128,15 @@ void secondSigIntHandler(int sig){
     sD->indexPlayerLefted = playerIndex;
  
     comunicaDisconnessione();
-    
+    //Sveglio a metà il server in maniera tale da permettere la sua terminazione
+    s_signal(semID, SEM_SERVER);
+    if(sD->activePlayer==0){//Nel caso fossi l'unico player attivo sveglio ulteriormente il server
+        s_signal(semID, SEM_SERVER);
+    }
     //Sblocco il semaforo di MUTEX
     s_signal(semID, SEM_MUTEX);
     
-    //Sveglio a metà il server in maniera tale da permettere la sua terminazione
-
-    s_signal(semID, SEM_SERVER);
-
+    
     printf("\nHai abbandonato la partita.\n");
     terminazioneSicura();
 }
