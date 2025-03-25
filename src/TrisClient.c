@@ -338,6 +338,7 @@ void printBoard(){
             }
         }
 }
+
 /*
     Ritorna il puntatore alla zona di memoria condivisa
 */
@@ -362,7 +363,6 @@ void cleanBuffer() {
     // Ripristina i flag originali del file descriptor di stdin
     fcntl(fileno(stdin), F_SETFL, flags); 
 }
-
 
 int getBotPlay() {
     int index;
