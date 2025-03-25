@@ -41,8 +41,8 @@ It was developed according to the given requirements for the Sistemi Operativi e
 
 ## File Structure
 - `TrisClient.c`: Contains the logic for the clients.
+- `TrisServer.c`: Contains the logic for the clients.
 - `semaphore.c`: Implements the general operations for the semaphores.
-- `sync.c`: Handles synchronization using Unix system calls.
 - `Documents/Elaborato_SO.pdf`: Little documentation for the project.
 
 ## Authors
